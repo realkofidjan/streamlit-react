@@ -1,0 +1,67 @@
+.episode-detail-page {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+.episode-detail-banner {
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 2rem;
+  max-height: 500px;
+}
+
+.episode-detail-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.episode-detail-content {
+  max-width: 800px;
+}
+
+.episode-detail-badge {
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  background: rgba(229, 9, 20, 0.15);
+  color: var(--primary);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.episode-detail-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.episode-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.episode-detail-meta span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.episode-detail-overview {
+  margin-bottom: 2rem;
+}
+
+.episode-detail-overview h3 {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.episode-detail-overview p {
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
