@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { FaStar, FaClock, FaCalendar, FaPlay, FaTimes, FaHdd, FaExclamationTriangle } from 'react-icons/fa';
 import { getMovieDetails, getImageUrl } from '../services/tmdb';
 import { searchLocalMovies, getLocalMovieStreamUrl } from '../services/media';
+import NetflixPlayer from '../components/NetflixPlayer';
 import './MovieDetail.css';
 
 function MovieDetail() {
@@ -13,7 +14,6 @@ function MovieDetail() {
   const [localFile, setLocalFile] = useState(null);
   const [localSearching, setLocalSearching] = useState(false);
   const [adWarningDismissed, setAdWarningDismissed] = useState(false);
-  const [videoLoading, setVideoLoading] = useState(false);
 
   useEffect(() => {
     const fetchMovie = async () => {
@@ -109,74 +109,61 @@ function MovieDetail() {
       </div>
 
       {showPlayer && (
-        <div className="video-player-overlay" onClick={() => setShowPlayer(false)}>
-          <div className="video-player-wrapper" onClick={(e) => e.stopPropagation()}>
-            <button className="player-close-btn" onClick={() => setShowPlayer(false)}>
-              <FaTimes />
-            </button>
+        localFile && localStreamUrl ? (
+          <NetflixPlayer
+            src={localStreamUrl}
+            title={movie.title}
+            onClose={() => setShowPlayer(false)}
+          />
+        ) : (
+          <div className="video-player-overlay" onClick={() => setShowPlayer(false)}>
+            <div className="video-player-wrapper" onClick={(e) => e.stopPropagation()}>
+              <button className="player-close-btn" onClick={() => setShowPlayer(false)}>
+                <FaTimes />
+              </button>
 
-            {localFile && localStreamUrl ? (
-              <>
-                {videoLoading && (
-                  <div className="video-buffering">
-                    <div className="buffering-spinner" />
-                    <p>Loading from your drive...</p>
+              {!adWarningDismissed ? (
+                <div className="ad-warning">
+                  <FaExclamationTriangle className="ad-warning-icon" />
+                  <h3>Heads Up</h3>
+                  <p>
+                    This movie is not available on your local drive.
+                    The online player may contain <strong>pop-up ads</strong> and redirects.
+                  </p>
+                  <p className="ad-warning-tip">
+                    Use a browser ad-blocker for the best experience.
+                  </p>
+                  <div className="ad-warning-actions">
+                    <button
+                      className="ad-warning-btn proceed"
+                      onClick={() => setAdWarningDismissed(true)}
+                    >
+                      Continue Anyway
+                    </button>
+                    <button
+                      className="ad-warning-btn cancel"
+                      onClick={() => setShowPlayer(false)}
+                    >
+                      Go Back
+                    </button>
                   </div>
-                )}
-                <video
-                  key="local"
-                  src={localStreamUrl}
-                  className="local-video-player"
-                  controls
-                  autoPlay
-                  preload="auto"
-                  onWaiting={() => setVideoLoading(true)}
-                  onPlaying={() => setVideoLoading(false)}
-                  onCanPlay={() => setVideoLoading(false)}
-                  onLoadStart={() => setVideoLoading(true)}
-                />
-              </>
-            ) : !adWarningDismissed ? (
-              <div className="ad-warning">
-                <FaExclamationTriangle className="ad-warning-icon" />
-                <h3>Heads Up</h3>
-                <p>
-                  This movie is not available on your local drive.
-                  The online player may contain <strong>pop-up ads</strong> and redirects.
-                </p>
-                <p className="ad-warning-tip">
-                  Use a browser ad-blocker for the best experience.
-                </p>
-                <div className="ad-warning-actions">
-                  <button
-                    className="ad-warning-btn proceed"
-                    onClick={() => setAdWarningDismissed(true)}
-                  >
-                    Continue Anyway
-                  </button>
-                  <button
-                    className="ad-warning-btn cancel"
-                    onClick={() => setShowPlayer(false)}
-                  >
-                    Go Back
-                  </button>
                 </div>
-              </div>
-            ) : (
-              <iframe
-                src={vidfastUrl}
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                allowFullScreen
-                referrerPolicy="no-referrer"
-                allow="autoplay; encrypted-media; picture-in-picture"
-                title={movie.title}
-                className="vidfast-iframe"
-              />
-            )}
+              ) : (
+                <iframe
+                  src={vidfastUrl}
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  allowFullScreen
+                  referrerPolicy="no-referrer"
+                  allow="autoplay; encrypted-media; picture-in-picture"
+                  title={movie.title}
+                  className="vidfast-iframe"
+                />
+              )}
+            </div>
           </div>
-        </div>
+        )
       )}
 
       <div className="detail-content">
