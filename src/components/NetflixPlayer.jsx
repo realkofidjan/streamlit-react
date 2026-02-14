@@ -228,6 +228,7 @@ function NetflixPlayer({ src, title, onClose }) {
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onTimeUpdate={handleTimeUpdate}
+        onProgress={handleTimeUpdate}
         onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
         onWaiting={() => setBuffering(true)}
         onPlaying={() => setBuffering(false)}
@@ -240,6 +241,13 @@ function NetflixPlayer({ src, title, onClose }) {
       {buffering && (
         <div className="nfx-buffering">
           <div className="nfx-buffering-spinner" />
+        </div>
+      )}
+
+      {/* Buffer-ahead indicator when paused */}
+      {!playing && !buffering && buffered > currentTime && duration > 0 && (
+        <div className="nfx-buffer-status">
+          Buffered {formatTime(buffered - currentTime)} ahead
         </div>
       )}
 

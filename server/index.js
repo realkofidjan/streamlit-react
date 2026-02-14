@@ -9,9 +9,10 @@ const PORT = process.env.PORT || 4000;
 const MOVIES_DIR = '/Volumes/Lexar-NK&D/Movies';
 const TV_DIR = '/Volumes/Lexar-NK&D/Tv Shows';
 
-// 2MB max chunk — forces smaller range requests so playback starts faster over tunnels
-const MAX_CHUNK = 2 * 1024 * 1024;
-const STREAM_HWM = 64 * 1024; // 64KB read buffer
+// First request = 2MB for fast playback start; subsequent = 10MB for aggressive buffering
+const INITIAL_CHUNK = 2 * 1024 * 1024;
+const BUFFER_CHUNK = 10 * 1024 * 1024;
+const STREAM_HWM = 64 * 1024;
 
 app.use(cors());
 
@@ -46,9 +47,10 @@ function streamFile(filePath, req, res) {
   if (range) {
     const parts = range.replace(/bytes=/, '').split('-');
     const start = parseInt(parts[0], 10);
-    // Cap the end to MAX_CHUNK from start for faster initial delivery
     const requestedEnd = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-    const end = Math.min(requestedEnd, start + MAX_CHUNK - 1, fileSize - 1);
+    // First chunk (start=0) is small for fast start; all others are large for aggressive buffering
+    const maxChunk = start === 0 ? INITIAL_CHUNK : BUFFER_CHUNK;
+    const end = Math.min(requestedEnd, start + maxChunk - 1, fileSize - 1);
     const chunkSize = end - start + 1;
 
     const stream = fs.createReadStream(filePath, { start, end, highWaterMark: STREAM_HWM });
@@ -61,8 +63,8 @@ function streamFile(filePath, req, res) {
     });
     stream.pipe(res);
   } else {
-    // No range — cap to MAX_CHUNK so the browser switches to range requests quickly
-    const end = Math.min(MAX_CHUNK - 1, fileSize - 1);
+    // No range header — send small initial chunk so browser switches to range requests
+    const end = Math.min(INITIAL_CHUNK - 1, fileSize - 1);
     const chunkSize = end + 1;
     const stream = fs.createReadStream(filePath, { start: 0, end, highWaterMark: STREAM_HWM });
     res.writeHead(206, {
