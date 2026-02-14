@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { FaFilm } from 'react-icons/fa';
+import { FaFilm, FaCog } from 'react-icons/fa';
 import './Header.css';
 
 function Header() {
@@ -12,6 +12,7 @@ function Header() {
         </Link>
         <nav className="nav-links">
           <Link to="/">Home</Link>
+          <Link to="/settings" title="Settings"><FaCog /></Link>
         </nav>
       </div>
     </header>

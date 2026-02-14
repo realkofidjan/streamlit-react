@@ -1,25 +1,35 @@
 import axios from 'axios';
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_SERVER_URL || 'http://localhost:4000';
+const DEFAULT_URL = import.meta.env.VITE_MEDIA_SERVER_URL || 'http://localhost:4000';
 
-const api = axios.create({ baseURL: MEDIA_URL });
+export function getMediaUrl() {
+  return localStorage.getItem('mediaServerUrl') || DEFAULT_URL;
+}
+
+export function setMediaUrl(url) {
+  localStorage.setItem('mediaServerUrl', url);
+}
+
+function getApi() {
+  return axios.create({ baseURL: getMediaUrl() });
+}
 
 // Movies
 export const searchLocalMovies = (query) =>
-  api.get('/api/movies/search', { params: { q: query } });
+  getApi().get('/api/movies/search', { params: { q: query } });
 
 export const getLocalMovieStreamUrl = (filename) =>
-  `${MEDIA_URL}/api/movies/stream/${encodeURIComponent(filename)}`;
+  `${getMediaUrl()}/api/movies/stream/${encodeURIComponent(filename)}`;
 
 // TV Shows
 export const searchLocalTvShows = (query) =>
-  api.get('/api/tv/search', { params: { q: query } });
+  getApi().get('/api/tv/search', { params: { q: query } });
 
 export const getLocalTvSeasons = (showName) =>
-  api.get(`/api/tv/${encodeURIComponent(showName)}/seasons`);
+  getApi().get(`/api/tv/${encodeURIComponent(showName)}/seasons`);
 
 export const getLocalTvEpisodes = (showName, seasonName) =>
-  api.get(`/api/tv/${encodeURIComponent(showName)}/${encodeURIComponent(seasonName)}/episodes`);
+  getApi().get(`/api/tv/${encodeURIComponent(showName)}/${encodeURIComponent(seasonName)}/episodes`);
 
 export const getLocalTvStreamUrl = (showName, seasonName, filename) =>
-  `${MEDIA_URL}/api/tv/${encodeURIComponent(showName)}/${encodeURIComponent(seasonName)}/stream/${encodeURIComponent(filename)}`;
+  `${getMediaUrl()}/api/tv/${encodeURIComponent(showName)}/${encodeURIComponent(seasonName)}/stream/${encodeURIComponent(filename)}`;

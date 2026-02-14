@@ -13,6 +13,7 @@ function MovieDetail() {
   const [localFile, setLocalFile] = useState(null);
   const [localSearching, setLocalSearching] = useState(false);
   const [adWarningDismissed, setAdWarningDismissed] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(false);
 
   useEffect(() => {
     const fetchMovie = async () => {
@@ -115,13 +116,26 @@ function MovieDetail() {
             </button>
 
             {localFile && localStreamUrl ? (
-              <video
-                key="local"
-                src={localStreamUrl}
-                className="local-video-player"
-                controls
-                autoPlay
-              />
+              <>
+                {videoLoading && (
+                  <div className="video-buffering">
+                    <div className="buffering-spinner" />
+                    <p>Loading from your drive...</p>
+                  </div>
+                )}
+                <video
+                  key="local"
+                  src={localStreamUrl}
+                  className="local-video-player"
+                  controls
+                  autoPlay
+                  preload="auto"
+                  onWaiting={() => setVideoLoading(true)}
+                  onPlaying={() => setVideoLoading(false)}
+                  onCanPlay={() => setVideoLoading(false)}
+                  onLoadStart={() => setVideoLoading(true)}
+                />
+              </>
             ) : !adWarningDismissed ? (
               <div className="ad-warning">
                 <FaExclamationTriangle className="ad-warning-icon" />

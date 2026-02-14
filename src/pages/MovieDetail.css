@@ -107,56 +107,43 @@
   color: var(--primary);
 }
 
-.source-switcher {
-  position: absolute;
-  top: -45px;
-  left: 0;
-  display: flex;
-  gap: 0.5rem;
-  z-index: 10;
-}
-
-.source-btn {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.8rem;
-  font-weight: 500;
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  transition: var(--transition);
-}
-
-.source-btn.active {
-  background: var(--primary);
-  color: white;
-  border-color: var(--primary);
-}
-
-.source-btn:hover:not(.active):not(:disabled) {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-}
-
-.source-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.source-btn.local-available {
-  border-color: #2ecc71;
-}
-
-.source-btn.local-available.active {
-  background: #27ae60;
-  border-color: #27ae60;
-}
 
 .local-video-player {
   width: 100%;
   height: 100%;
   background: #000;
   outline: none;
+}
+
+.video-buffering {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.video-buffering p {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+}
+
+.buffering-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .no-local-file {

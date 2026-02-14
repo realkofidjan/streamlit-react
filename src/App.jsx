@@ -7,6 +7,7 @@ import TvShowDetail from './pages/TvShowDetail';
 import TvSeasonDetail from './pages/TvSeasonDetail';
 import TvEpisodeDetail from './pages/TvEpisodeDetail';
 import SearchResults from './pages/SearchResults';
+import Settings from './pages/Settings';
 import './App.css';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
             <Route path="/tv/:id/season/:seasonNumber" element={<TvSeasonDetail />} />
             <Route path="/tv/:id/season/:seasonNumber/episode/:episodeNumber" element={<TvEpisodeDetail />} />
             <Route path="/search" element={<SearchResults />} />
+            <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>
         <Footer />
