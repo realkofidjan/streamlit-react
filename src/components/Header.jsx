@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { FaFilm, FaCog, FaSignOutAlt, FaBell, FaTimes } from 'react-icons/fa';
+import { Link, useLocation } from 'react-router-dom';
+import { FaFilm, FaCog, FaSignOutAlt, FaBell, FaTimes, FaBars } from 'react-icons/fa';
 import { useUser } from '../contexts/UserContext';
 import './Header.css';
 
@@ -9,7 +9,14 @@ function Header() {
   const isFiifi = currentUser?.username?.toLowerCase() === 'fiifi';
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const location = useLocation();
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!isFiifi) return;
@@ -46,7 +53,10 @@ function Header() {
           <FaFilm className="logo-icon" />
           <span>StreamIt</span>
         </Link>
-        <nav className="nav-links">
+        <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen((p) => !p)} aria-label="Toggle menu">
+          {mobileMenuOpen ? <FaTimes /> : <FaBars />}
+        </button>
+        <nav className={`nav-links ${mobileMenuOpen ? 'open' : ''}`}>
           <Link to="/">Home</Link>
           <Link to="/movies">Movies</Link>
           <Link to="/tv-shows">TV Shows</Link>

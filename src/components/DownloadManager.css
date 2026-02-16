@@ -91,3 +91,11 @@
   color: #e74c3c;
   font-size: 0.85rem;
 }
+
+@media (max-width: 480px) {
+  .dm-panel {
+    width: calc(100% - 1rem);
+    right: 0.5rem;
+    bottom: 0.5rem;
+  }
+}

@@ -182,42 +182,44 @@ function MovieDetail() {
                   <FaCalendar /> {movie.release_date}
                 </span>
               </div>
-              {localFile ? (
-                <div className="local-badge">
-                  <FaHdd /> Available on your drive
-                </div>
-              ) : !localSearching && (
-                <div className="download-badge">
-                  Not on your drive — download to watch
-                </div>
-              )}
-              {localFile && localStreamUrl && (
-                <SaveOfflineButton
-                  cacheKey={`movie-${id}`}
-                  streamUrl={localStreamUrl}
-                  metadata={{
-                    title: movie.title,
-                    posterPath: movie.poster_path,
-                    type: 'movie',
-                    linkTo: `/movie/${id}`,
-                  }}
-                />
-              )}
-              {(() => {
-                const inWatchlist = currentUser?.watchlist?.movies?.[id];
-                return (
-                  <button
-                    className={`watchlist-btn${inWatchlist ? ' active' : ''}`}
-                    onClick={() => inWatchlist
-                      ? removeFromWatchlist('movie', id)
-                      : addToWatchlist('movie', id, movie.title, movie.poster_path)
-                    }
-                  >
-                    {inWatchlist ? <FaBookmark /> : <FaRegBookmark />}
-                    {inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
-                  </button>
-                );
-              })()}
+              <div className="detail-actions-stack">
+                {localFile ? (
+                  <div className="local-badge">
+                    <FaHdd /> Available on your drive
+                  </div>
+                ) : !localSearching && (
+                  <div className="download-badge">
+                    Not on your drive — download to watch
+                  </div>
+                )}
+                {localFile && localStreamUrl && (
+                  <SaveOfflineButton
+                    cacheKey={`movie-${id}`}
+                    streamUrl={localStreamUrl}
+                    metadata={{
+                      title: movie.title,
+                      posterPath: movie.poster_path,
+                      type: 'movie',
+                      linkTo: `/movie/${id}`,
+                    }}
+                  />
+                )}
+                {(() => {
+                  const inWatchlist = currentUser?.watchlist?.movies?.[id];
+                  return (
+                    <button
+                      className={`watchlist-btn${inWatchlist ? ' active' : ''}`}
+                      onClick={() => inWatchlist
+                        ? removeFromWatchlist('movie', id)
+                        : addToWatchlist('movie', id, movie.title, movie.poster_path)
+                      }
+                    >
+                      {inWatchlist ? <FaBookmark /> : <FaRegBookmark />}
+                      {inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
+                    </button>
+                  );
+                })()}
+              </div>
               <div className="detail-genres">
                 {movie.genres?.map((g) => (
                   <span key={g.id} className="genre-tag">{g.name}</span>

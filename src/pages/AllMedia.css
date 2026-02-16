@@ -31,3 +31,21 @@
   text-align: center;
   padding: 3rem 0;
 }
+
+@media (max-width: 768px) {
+  .all-media-title {
+    font-size: 1.4rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .all-media-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .all-media-page {
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+  }
+}

@@ -64,3 +64,29 @@
   color: var(--text-secondary);
   font-size: 0.9rem;
 }
+
+@media (max-width: 768px) {
+  .search-results-header h1 {
+    font-size: 1.3rem;
+  }
+
+  .pagination {
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+
+  .pagination-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .search-results-page {
+    padding-top: 1rem;
+  }
+
+  .search-results-header {
+    margin-bottom: 1.5rem;
+  }
+}

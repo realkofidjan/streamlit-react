@@ -167,52 +167,54 @@ function TvShowDetail() {
                   {show.status}
                 </span>
               </div>
-              {localShow ? (
-                <div className="local-badge">
-                  <FaHdd /> On your drive ({localEpisodeCount} episodes)
-                </div>
-              ) : (
-                <div className="download-badge">
-                  Not on your drive
-                </div>
-              )}
-              {newEpisodes > 0 && (
-                <div className="new-episodes-banner">
-                  <FaBell /> {newEpisodes} new episode{newEpisodes !== 1 ? 's' : ''} available
-                  {!isFiifi && (
+              <div className="detail-actions-stack">
+                {localShow ? (
+                  <div className="local-badge">
+                    <FaHdd /> On your drive ({localEpisodeCount} episodes)
+                  </div>
+                ) : (
+                  <div className="download-badge">
+                    Not on your drive
+                  </div>
+                )}
+                {newEpisodes > 0 && (
+                  <div className="new-episodes-banner">
+                    <FaBell /> {newEpisodes} new episode{newEpisodes !== 1 ? 's' : ''} available
+                    {!isFiifi && (
+                      <button
+                        className="request-download-btn"
+                        disabled={requestSent}
+                        onClick={async () => {
+                          await sendNotification(show.name, id, `${newEpisodes} new episode${newEpisodes !== 1 ? 's' : ''}`);
+                          setRequestSent(true);
+                        }}
+                      >
+                        {requestSent ? 'Requested' : 'Request Download'}
+                      </button>
+                    )}
+                  </div>
+                )}
+                {upcomingEpisodes > 0 && nextAirDate && (
+                  <div className="upcoming-episodes-banner">
+                    <FaCalendar /> {upcomingEpisodes} upcoming episode{upcomingEpisodes !== 1 ? 's' : ''} — next airs {nextAirDate}
+                  </div>
+                )}
+                {(() => {
+                  const inWatchlist = currentUser?.watchlist?.shows?.[id];
+                  return (
                     <button
-                      className="request-download-btn"
-                      disabled={requestSent}
-                      onClick={async () => {
-                        await sendNotification(show.name, id, `${newEpisodes} new episode${newEpisodes !== 1 ? 's' : ''}`);
-                        setRequestSent(true);
-                      }}
+                      className={`watchlist-btn${inWatchlist ? ' active' : ''}`}
+                      onClick={() => inWatchlist
+                        ? removeFromWatchlist('show', id)
+                        : addToWatchlist('show', id, show.name, show.poster_path)
+                      }
                     >
-                      {requestSent ? 'Requested' : 'Request Download'}
+                      {inWatchlist ? <FaBookmark /> : <FaRegBookmark />}
+                      {inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
                     </button>
-                  )}
-                </div>
-              )}
-              {upcomingEpisodes > 0 && nextAirDate && (
-                <div className="upcoming-episodes-banner">
-                  <FaCalendar /> {upcomingEpisodes} upcoming episode{upcomingEpisodes !== 1 ? 's' : ''} — next airs {nextAirDate}
-                </div>
-              )}
-              {(() => {
-                const inWatchlist = currentUser?.watchlist?.shows?.[id];
-                return (
-                  <button
-                    className={`watchlist-btn${inWatchlist ? ' active' : ''}`}
-                    onClick={() => inWatchlist
-                      ? removeFromWatchlist('show', id)
-                      : addToWatchlist('show', id, show.name, show.poster_path)
-                    }
-                  >
-                    {inWatchlist ? <FaBookmark /> : <FaRegBookmark />}
-                    {inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
-                  </button>
-                );
-              })()}
+                  );
+                })()}
+              </div>
               <div className="detail-genres">
                 {show.genres?.map((g) => (
                   <span key={g.id} className="genre-tag">{g.name}</span>

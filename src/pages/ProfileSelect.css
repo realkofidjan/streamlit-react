@@ -227,3 +227,46 @@
 .profile-setup-btn:hover {
   opacity: 0.9;
 }
+
+@media (max-width: 600px) {
+  .profile-heading {
+    font-size: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .profile-grid {
+    gap: 1.5rem;
+  }
+
+  .profile-avatar {
+    width: 90px;
+    height: 90px;
+    font-size: 2.25rem;
+  }
+
+  .profile-pin-avatar {
+    width: 80px;
+    height: 80px;
+    font-size: 2rem;
+  }
+
+  .create-input {
+    width: 200px;
+  }
+}
+
+@media (max-width: 400px) {
+  .profile-avatar {
+    width: 75px;
+    height: 75px;
+    font-size: 2rem;
+  }
+
+  .profile-grid {
+    gap: 1rem;
+  }
+
+  .profile-name {
+    font-size: 0.9rem;
+  }
+}

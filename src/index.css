@@ -65,3 +65,15 @@ button {
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* Touch-friendly tap targets */
+@media (max-width: 768px) {
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Prevent horizontal overflow on mobile */
+  html, body {
+    overflow-x: hidden;
+  }
+}

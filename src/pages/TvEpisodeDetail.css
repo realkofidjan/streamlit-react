@@ -204,11 +204,35 @@
   opacity: 0.9;
 }
 
+@media (max-width: 768px) {
+  .episode-detail-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .episode-detail-banner {
+    max-height: 300px;
+  }
+}
+
 @media (max-width: 600px) {
   .up-next-card {
     flex-direction: column;
   }
+
   .up-next-still {
     width: 100%;
+  }
+
+  .episode-detail-header h1 {
+    font-size: 1.3rem;
+  }
+
+  .episode-detail-banner {
+    max-height: 220px;
+    border-radius: 8px;
+  }
+
+  .episode-detail-page {
+    padding-top: 1rem;
   }
 }
