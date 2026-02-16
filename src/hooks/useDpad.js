@@ -3,6 +3,11 @@ import { useLocation } from 'react-router-dom';
 
 const FOCUSABLE = 'a[href], button:not(:disabled), input, select, [tabindex="0"]';
 
+// Detect TV browsers — start in D-pad mode by default on these
+const IS_TV = /VIDAA|Tizen|WebOS|web0s|HbbTV|SmartTV|BRAVIA|NetCast/i.test(
+  typeof navigator !== 'undefined' ? navigator.userAgent : ''
+);
+
 function getCenter(rect) {
   return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 }
@@ -75,8 +80,21 @@ function findBest(current, direction) {
   return best;
 }
 
+function enterDpadMode() {
+  document.body.setAttribute('data-dpad-mode', '');
+}
+
+function exitDpadMode() {
+  document.body.removeAttribute('data-dpad-mode');
+}
+
 export default function useDpad() {
   const location = useLocation();
+
+  // On TV browsers, start in D-pad mode immediately
+  useEffect(() => {
+    if (IS_TV) enterDpadMode();
+  }, []);
 
   // Auto-focus first focusable element on route change
   useEffect(() => {
@@ -94,15 +112,19 @@ export default function useDpad() {
   }, [location.pathname]);
 
   useEffect(() => {
+    let mouseTimer;
+
     const handleKeyDown = (e) => {
       // Skip when video player is active
       if (document.body.hasAttribute('data-player-active')) return;
+
+      // Any key press activates D-pad mode (hides cursor)
+      enterDpadMode();
 
       // Skip when typing in an input (allow Enter through for form submission)
       const tag = document.activeElement?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
         if (e.key !== 'Enter') return;
-        // Enter on input: let the form handle it
         return;
       }
 
@@ -130,7 +152,22 @@ export default function useDpad() {
       }
     };
 
+    // Mouse movement exits D-pad mode (shows cursor again)
+    const handleMouseMove = () => {
+      clearTimeout(mouseTimer);
+      exitDpadMode();
+      // Re-enter D-pad mode after 3s of no mouse movement on TV browsers
+      if (IS_TV) {
+        mouseTimer = setTimeout(enterDpadMode, 3000);
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      clearTimeout(mouseTimer);
+    };
   }, []);
 }

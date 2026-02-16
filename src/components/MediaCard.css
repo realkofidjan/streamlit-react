@@ -148,9 +148,9 @@
 }
 
 .media-card:focus-visible {
-  transform: translateY(-5px);
+  transform: translateY(-5px) scale(1.05);
   box-shadow: 0 0 0 3px var(--primary), var(--shadow-lg);
-  outline: none;
+  outline: none !important;
 }
 
 .media-card:focus-visible .media-card-overlay {
@@ -159,6 +159,11 @@
 
 .media-card:focus-visible .media-card-poster img {
   transform: scale(1.05);
+}
+
+body[data-dpad-mode] .media-card:focus-visible {
+  transform: translateY(-5px) scale(1.08);
+  box-shadow: 0 0 0 4px var(--primary), 0 0 20px rgba(229, 9, 20, 0.4), var(--shadow-lg);
 }
 
 @media (max-width: 480px) {

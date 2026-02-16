@@ -81,6 +81,29 @@ select:focus-visible,
   border-radius: 4px;
 }
 
+/* D-pad mode: hide cursor, enhance focus ring */
+body[data-dpad-mode] {
+  cursor: none !important;
+}
+
+body[data-dpad-mode] * {
+  cursor: none !important;
+}
+
+body[data-dpad-mode] :focus-visible {
+  outline: 3px solid var(--primary) !important;
+  outline-offset: 3px;
+}
+
+/* Hide scrollbars in D-pad mode (no mouse to scroll) */
+body[data-dpad-mode] ::-webkit-scrollbar {
+  display: none;
+}
+
+body[data-dpad-mode] {
+  scrollbar-width: none;
+}
+
 /* Server alert banner */
 .server-alert {
   position: fixed;
