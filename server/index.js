@@ -125,13 +125,22 @@ function writeUsers(users) {
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
 }
 
+// Formats that browsers can play natively (no transcoding needed)
+const NATIVE_EXTS = new Set(['.mp4', '.webm', '.m4v']);
+
 function streamFile(filePath, req, res) {
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: 'File not found' });
   }
+  const ext = path.extname(filePath).toLowerCase();
+
+  // MKV/AVI need ffmpeg remux to MP4 for browser playback
+  if (!NATIVE_EXTS.has(ext)) {
+    return streamTranscoded(filePath, req, res);
+  }
+
   const stat = fs.statSync(filePath);
   const fileSize = stat.size;
-  const ext = path.extname(filePath).toLowerCase();
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
   const range = req.headers.range;
@@ -164,6 +173,43 @@ function streamFile(filePath, req, res) {
     });
     stream.pipe(res);
   }
+}
+
+function streamTranscoded(filePath, req, res) {
+  // Seek support: accept ?t=<seconds> query param for start time
+  const startTime = parseFloat(req.query.t) || 0;
+  const seekArgs = startTime > 0 ? ['-ss', String(startTime)] : [];
+
+  const ffArgs = [
+    ...seekArgs,
+    '-i', filePath,
+    '-c:v', 'copy',       // copy video stream (fast, no re-encode)
+    '-c:a', 'aac',        // transcode audio to AAC for browser compat
+    '-b:a', '192k',
+    '-movflags', 'frag_keyframe+empty_moov+faststart',
+    '-f', 'mp4',
+    '-'
+  ];
+
+  const ff = spawn('ffmpeg', ffArgs, { stdio: ['ignore', 'pipe', 'ignore'] });
+
+  res.writeHead(200, {
+    'Content-Type': 'video/mp4',
+    'Transfer-Encoding': 'chunked',
+    'Cache-Control': 'no-cache',
+  });
+
+  ff.stdout.pipe(res);
+
+  res.on('close', () => {
+    ff.kill('SIGTERM');
+  });
+
+  ff.on('error', () => {
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Transcoding failed' });
+    }
+  });
 }
 
 // ========== USERS ==========
