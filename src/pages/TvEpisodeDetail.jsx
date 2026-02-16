@@ -5,7 +5,6 @@ import { getTvEpisodeDetails, getTvShowDetails, getTvSeasonDetails, getImageUrl 
 import { searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes, getLocalTvStreamUrl } from '../services/media';
 import { useUser } from '../contexts/UserContext';
 import NetflixPlayer from '../components/NetflixPlayer';
-import DownloadButton from '../components/DownloadButton';
 import SaveOfflineButton from '../components/SaveOfflineButton';
 import './TvEpisodeDetail.css';
 
@@ -232,42 +231,7 @@ function TvEpisodeDetail() {
             <span className="episode-detail-badge">
               Season {seasonNumber} &middot; Episode {episodeNumber}
             </span>
-            <div className="detail-title-row">
-              <h1>{episode.name}</h1>
-              {!localStreamUrl && isAired && (
-                <DownloadButton
-                  type="episode"
-                  tmdbId={id}
-                  showName={show?.name || ''}
-                  season={parseInt(seasonNumber)}
-                  episode={parseInt(episodeNumber)}
-                  episodeTitle={episode.name}
-                  onComplete={() => {
-                    if (show) {
-                      searchLocalTvShows(show.name).then(async (res) => {
-                        if (res.data.length === 0) return;
-                        const matchName = res.data[0].name;
-                        const seasonsRes = await getLocalTvSeasons(matchName);
-                        const seasonFolder = seasonsRes.data.find((s) => {
-                          const num = s.name.match(/\d+/);
-                          return num && parseInt(num[0]) === parseInt(seasonNumber);
-                        });
-                        if (!seasonFolder) return;
-                        const epsRes = await getLocalTvEpisodes(matchName, seasonFolder.name);
-                        const localEp = epsRes.data.find((ep) => {
-                          const match = ep.filename.match(/[Ee](\d+)/);
-                          return match && parseInt(match[1]) === parseInt(episodeNumber);
-                        });
-                        if (localEp) {
-                          setLocalFilename(localEp.filename);
-                          setLocalStreamUrl(getLocalTvStreamUrl(matchName, seasonFolder.name, localEp.filename));
-                        }
-                      }).catch(() => {});
-                    }
-                  }}
-                />
-              )}
-            </div>
+            <h1>{episode.name}</h1>
             <div className="episode-detail-meta">
               {episode.vote_average > 0 && (
                 <span className="detail-rating">
@@ -337,16 +301,7 @@ function TvEpisodeDetail() {
                       <button className="up-next-play-btn" onClick={playNextEpisode}>
                         <FaPlay /> Play Next
                       </button>
-                    ) : nextEpisodeAired ? (
-                      <DownloadButton
-                        type="episode"
-                        tmdbId={id}
-                        showName={show?.name || ''}
-                        season={parseInt(seasonNumber)}
-                        episode={nextEpisode.episode_number}
-                        episodeTitle={nextEpisode.name}
-                      />
-                    ) : nextEpisode.air_date ? (
+                    ) : nextEpisode.air_date && !nextEpisodeAired ? (
                       <span className="episode-upcoming"><FaCalendar /> Airs {nextEpisode.air_date}</span>
                     ) : null}
                   </div>

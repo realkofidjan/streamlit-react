@@ -91,6 +91,28 @@
   float: right;
 }
 
+.request-download-btn {
+  margin-left: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.request-download-btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.request-download-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .upcoming-episodes-banner {
   display: inline-flex;
   align-items: center;

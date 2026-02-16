@@ -50,16 +50,11 @@ function ProfileSelect() {
           </div>
           <h2>{showPin.username}</h2>
           <p className="profile-pin-label">Enter your PIN</p>
-          <div className="pin-input-row">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className={`pin-dot ${pin.length > i ? 'filled' : ''}`} />
-            ))}
-          </div>
           <input
             type="password"
             inputMode="numeric"
             maxLength={4}
-            className="pin-hidden-input"
+            className="pin-text-input"
             value={pin}
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '').slice(0, 4);
@@ -68,6 +63,7 @@ function ProfileSelect() {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && pin.length === 4) handleLogin();
             }}
+            placeholder="----"
             autoFocus
           />
           {error && <p className="pin-error">{error}</p>}

@@ -98,8 +98,8 @@
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
 }
 
-.media-card-drive-icon.download {
-  color: var(--primary);
+.media-card-drive-icon.cloud {
+  color: #3b82f6;
 }
 
 .media-card-badge.episodes {

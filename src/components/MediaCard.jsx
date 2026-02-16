@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { FaStar, FaHdd, FaDownload } from 'react-icons/fa';
+import { FaStar, FaHdd, FaCloud } from 'react-icons/fa';
 import { getImageUrl } from '../services/tmdb';
 import './MediaCard.css';
 
@@ -27,8 +27,8 @@ function MediaCard({ item, type, badge }) {
         {(badge === 'local' || (badge && typeof badge === 'object')) && (
           <div className="media-card-drive-icon"><FaHdd /></div>
         )}
-        {badge === 'download' && (
-          <div className="media-card-drive-icon download"><FaDownload /></div>
+        {badge === 'cloud' && (
+          <div className="media-card-drive-icon cloud"><FaCloud /></div>
         )}
         {badge && typeof badge === 'object' && badge.type === 'new-episodes' && (
           <div className="media-card-badge-bottom new-aired">New Aired</div>

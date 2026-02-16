@@ -11,17 +11,22 @@ const PORT = process.env.PORT || 4000;
 const DATA_DIR = path.join(__dirname, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
+const NOTIFICATIONS_FILE = path.join(DATA_DIR, 'notifications.json');
 
-const DEFAULT_MOVIES_DIR = '/Volumes/Lexar-NK&D/Movies';
-const DEFAULT_TV_DIR = '/Volumes/Lexar-NK&D/Tv Shows';
+const DEFAULT_MOVIES_DIRS = ['/Volumes/Lexar-NK&D/Movies'];
+const DEFAULT_TV_DIRS = ['/Volumes/Lexar-NK&D/Tv Shows'];
 
 function loadConfig() {
   try {
     if (fs.existsSync(CONFIG_FILE)) {
-      return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      const raw = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      // Migrate old single-string format to arrays
+      const moviesDirs = raw.moviesDirs || (raw.moviesDir ? [raw.moviesDir] : DEFAULT_MOVIES_DIRS);
+      const tvDirs = raw.tvDirs || (raw.tvDir ? [raw.tvDir] : DEFAULT_TV_DIRS);
+      return { moviesDirs, tvDirs };
     }
   } catch { /* use defaults */ }
-  return { moviesDir: DEFAULT_MOVIES_DIR, tvDir: DEFAULT_TV_DIR };
+  return { moviesDirs: [...DEFAULT_MOVIES_DIRS], tvDirs: [...DEFAULT_TV_DIRS] };
 }
 
 function saveConfig(config) {
@@ -29,8 +34,8 @@ function saveConfig(config) {
 }
 
 let config = loadConfig();
-let MOVIES_DIR = config.moviesDir;
-let TV_DIR = config.tvDir;
+let MOVIES_DIRS = config.moviesDirs;
+let TV_DIRS = config.tvDirs;
 
 const INITIAL_CHUNK = 2 * 1024 * 1024;
 const BUFFER_CHUNK = 10 * 1024 * 1024;
@@ -39,9 +44,17 @@ const STREAM_HWM = 64 * 1024;
 app.use(cors());
 app.use(express.json());
 
-// Auto-create data directory and users file
+// Auto-create data directory and files
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, '[]');
+if (!fs.existsSync(NOTIFICATIONS_FILE)) fs.writeFileSync(NOTIFICATIONS_FILE, '[]');
+
+function readNotifications() {
+  try { return JSON.parse(fs.readFileSync(NOTIFICATIONS_FILE, 'utf-8')); } catch { return []; }
+}
+function writeNotifications(notifs) {
+  fs.writeFileSync(NOTIFICATIONS_FILE, JSON.stringify(notifs, null, 2));
+}
 
 const MIME_TYPES = {
   '.mp4': 'video/mp4',
@@ -53,10 +66,55 @@ const MIME_TYPES = {
 const VIDEO_EXTS = Object.keys(MIME_TYPES);
 
 function listVideoFiles(dir) {
+  if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir).filter((f) => {
     if (f.startsWith('.')) return false;
     return VIDEO_EXTS.includes(path.extname(f).toLowerCase());
   });
+}
+
+// List video files across multiple directories
+function listVideoFilesMulti(dirs) {
+  const all = [];
+  for (const dir of dirs) {
+    for (const f of listVideoFiles(dir)) {
+      all.push({ filename: f, name: f.replace(/\.[^.]+$/, ''), _dir: dir });
+    }
+  }
+  return all;
+}
+
+// Find a movie file across all movie dirs
+function findMovieFile(filename) {
+  for (const dir of MOVIES_DIRS) {
+    const filePath = path.join(dir, filename);
+    if (fs.existsSync(filePath)) return filePath;
+  }
+  return null;
+}
+
+// List all TV show directories across all TV dirs
+function listTvShows() {
+  const shows = [];
+  for (const dir of TV_DIRS) {
+    if (!fs.existsSync(dir)) continue;
+    const dirs = fs.readdirSync(dir).filter((f) =>
+      !f.startsWith('.') && fs.statSync(path.join(dir, f)).isDirectory()
+    );
+    for (const d of dirs) {
+      shows.push({ name: d, _dir: dir });
+    }
+  }
+  return shows;
+}
+
+// Find a TV show directory across all TV dirs
+function findTvShowDir(showName) {
+  for (const dir of TV_DIRS) {
+    const showDir = path.join(dir, showName);
+    if (fs.existsSync(showDir) && fs.statSync(showDir).isDirectory()) return showDir;
+  }
+  return null;
 }
 
 function readUsers() {
@@ -220,37 +278,83 @@ app.delete('/api/users/:id/watchlist/:type/:mediaId', (req, res) => {
   res.json(user.watchlist);
 });
 
+// ========== PROFILE ==========
+
+app.put('/api/users/:id/profile', (req, res) => {
+  const { username, currentPin, newPin } = req.body;
+  const users = readUsers();
+  const user = users.find((u) => u.id === req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  if (username) user.username = username;
+  if (currentPin && newPin) {
+    if (user.pin !== String(currentPin)) return res.status(401).json({ error: 'Current PIN is incorrect' });
+    user.pin = String(newPin);
+  }
+  writeUsers(users);
+  const { pin: _, ...safe } = user;
+  res.json(safe);
+});
+
+// ========== NOTIFICATIONS ==========
+
+app.get('/api/notifications', (req, res) => {
+  res.json(readNotifications());
+});
+
+app.post('/api/notifications', (req, res) => {
+  const { fromUser, showName, showId, message } = req.body;
+  if (!fromUser || !showName) return res.status(400).json({ error: 'fromUser and showName required' });
+  const notifs = readNotifications();
+  const notif = {
+    id: crypto.randomUUID(),
+    fromUser,
+    showName,
+    showId: showId || null,
+    message: message || '',
+    createdAt: new Date().toISOString(),
+  };
+  notifs.push(notif);
+  writeNotifications(notifs);
+  res.status(201).json(notif);
+});
+
+app.delete('/api/notifications/:id', (req, res) => {
+  let notifs = readNotifications();
+  notifs = notifs.filter((n) => n.id !== req.params.id);
+  writeNotifications(notifs);
+  res.json(notifs);
+});
+
 // ========== CONFIG ==========
 
 app.get('/api/config/media-paths', (req, res) => {
   res.json({
-    moviesDir: MOVIES_DIR,
-    tvDir: TV_DIR,
-    moviesDirExists: fs.existsSync(MOVIES_DIR),
-    tvDirExists: fs.existsSync(TV_DIR),
+    moviesDirs: MOVIES_DIRS.map((d) => ({ path: d, exists: fs.existsSync(d) })),
+    tvDirs: TV_DIRS.map((d) => ({ path: d, exists: fs.existsSync(d) })),
   });
 });
 
 app.put('/api/config/media-paths', (req, res) => {
-  const { moviesDir, tvDir, userId } = req.body;
+  const { moviesDirs, tvDirs, userId } = req.body;
   // Only Fiifi can change paths
   const users = readUsers();
   const user = users.find((u) => u.id === userId);
   if (!user || user.username.toLowerCase() !== 'fiifi') {
     return res.status(403).json({ error: 'Not authorized' });
   }
-  if (!moviesDir || !tvDir) return res.status(400).json({ error: 'Both paths required' });
-
-  MOVIES_DIR = moviesDir;
-  TV_DIR = tvDir;
-  config = { moviesDir, tvDir };
+  if (!moviesDirs || !tvDirs || !Array.isArray(moviesDirs) || !Array.isArray(tvDirs)) {
+    return res.status(400).json({ error: 'moviesDirs and tvDirs arrays required' });
+  }
+  // Filter out empty strings
+  MOVIES_DIRS = moviesDirs.filter((d) => d.trim());
+  TV_DIRS = tvDirs.filter((d) => d.trim());
+  config = { moviesDirs: MOVIES_DIRS, tvDirs: TV_DIRS };
   saveConfig(config);
 
   res.json({
-    moviesDir: MOVIES_DIR,
-    tvDir: TV_DIR,
-    moviesDirExists: fs.existsSync(MOVIES_DIR),
-    tvDirExists: fs.existsSync(TV_DIR),
+    moviesDirs: MOVIES_DIRS.map((d) => ({ path: d, exists: fs.existsSync(d) })),
+    tvDirs: TV_DIRS.map((d) => ({ path: d, exists: fs.existsSync(d) })),
   });
 });
 
@@ -258,15 +362,15 @@ app.put('/api/config/media-paths', (req, res) => {
 
 app.get('/api/library', (req, res) => {
   try {
-    const movies = listVideoFiles(MOVIES_DIR).map((f) => ({
-      filename: f, name: f.replace(/\.[^.]+$/, ''),
-    }));
-    let tvShows = [];
-    if (fs.existsSync(TV_DIR)) {
-      tvShows = fs.readdirSync(TV_DIR)
-        .filter((f) => !f.startsWith('.') && fs.statSync(path.join(TV_DIR, f)).isDirectory())
-        .map((d) => ({ name: d }));
-    }
+    const movies = listVideoFilesMulti(MOVIES_DIRS).map(({ filename, name }) => ({ filename, name }));
+    const shows = listTvShows().map(({ name }) => ({ name }));
+    // Deduplicate TV shows by name
+    const seen = new Set();
+    const tvShows = shows.filter((s) => {
+      if (seen.has(s.name)) return false;
+      seen.add(s.name);
+      return true;
+    });
     res.json({ movies, tvShows });
   } catch (err) {
     res.status(500).json({ error: 'Cannot read library' });
@@ -277,41 +381,10 @@ app.get('/api/library', (req, res) => {
 
 app.get('/api/movies', (req, res) => {
   try {
-    const files = listVideoFiles(MOVIES_DIR);
-    res.json(files.map((f) => ({ filename: f, name: f.replace(/\.[^.]+$/, '') })));
+    const movies = listVideoFilesMulti(MOVIES_DIRS).map(({ filename, name }) => ({ filename, name }));
+    res.json(movies);
   } catch (err) {
     res.status(500).json({ error: 'Cannot read movies directory' });
-  }
-});
-
-app.get('/api/movies/search', (req, res) => {
-  const query = normalizeSearch(req.query.q || '');
-  if (!query) return res.json([]);
-  try {
-    const files = listVideoFiles(MOVIES_DIR);
-    const matches = files
-      .filter((f) => normalizeSearch(f).includes(query))
-      .map((f) => ({ filename: f, name: f.replace(/\.[^.]+$/, '') }));
-    res.json(matches);
-  } catch (err) {
-    res.status(500).json({ error: 'Cannot search movies' });
-  }
-});
-
-app.get('/api/movies/stream/:filename', (req, res) => {
-  streamFile(path.join(MOVIES_DIR, req.params.filename), req, res);
-});
-
-// ========== TV SHOWS ==========
-
-app.get('/api/tv', (req, res) => {
-  try {
-    const dirs = fs.readdirSync(TV_DIR).filter((f) =>
-      !f.startsWith('.') && fs.statSync(path.join(TV_DIR, f)).isDirectory()
-    );
-    res.json(dirs.map((d) => ({ name: d })));
-  } catch (err) {
-    res.status(500).json({ error: 'Cannot read TV directory' });
   }
 });
 
@@ -319,16 +392,57 @@ function normalizeSearch(str) {
   return str.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
 }
 
+app.get('/api/movies/search', (req, res) => {
+  const query = normalizeSearch(req.query.q || '');
+  if (!query) return res.json([]);
+  try {
+    const movies = listVideoFilesMulti(MOVIES_DIRS);
+    const matches = movies
+      .filter((m) => normalizeSearch(m.filename).includes(query))
+      .map(({ filename, name }) => ({ filename, name }));
+    res.json(matches);
+  } catch (err) {
+    res.status(500).json({ error: 'Cannot search movies' });
+  }
+});
+
+app.get('/api/movies/stream/:filename', (req, res) => {
+  const filePath = findMovieFile(req.params.filename);
+  if (!filePath) return res.status(404).json({ error: 'File not found' });
+  streamFile(filePath, req, res);
+});
+
+// ========== TV SHOWS ==========
+
+app.get('/api/tv', (req, res) => {
+  try {
+    const shows = listTvShows();
+    const seen = new Set();
+    const unique = shows.filter((s) => {
+      if (seen.has(s.name)) return false;
+      seen.add(s.name);
+      return true;
+    });
+    res.json(unique.map(({ name }) => ({ name })));
+  } catch (err) {
+    res.status(500).json({ error: 'Cannot read TV directory' });
+  }
+});
+
 app.get('/api/tv/search', (req, res) => {
   const query = normalizeSearch(req.query.q || '');
   if (!query) return res.json([]);
   try {
-    const dirs = fs.readdirSync(TV_DIR).filter((f) =>
-      !f.startsWith('.') && fs.statSync(path.join(TV_DIR, f)).isDirectory()
-    );
-    const matches = dirs
-      .filter((d) => normalizeSearch(d).includes(query))
-      .map((d) => ({ name: d }));
+    const shows = listTvShows();
+    const seen = new Set();
+    const matches = shows
+      .filter((s) => normalizeSearch(s.name).includes(query))
+      .filter((s) => {
+        if (seen.has(s.name)) return false;
+        seen.add(s.name);
+        return true;
+      })
+      .map(({ name }) => ({ name }));
     res.json(matches);
   } catch (err) {
     res.status(500).json({ error: 'Cannot search TV shows' });
@@ -336,8 +450,8 @@ app.get('/api/tv/search', (req, res) => {
 });
 
 app.get('/api/tv/:show/seasons', (req, res) => {
-  const showDir = path.join(TV_DIR, req.params.show);
-  if (!fs.existsSync(showDir)) return res.status(404).json({ error: 'Show not found' });
+  const showDir = findTvShowDir(req.params.show);
+  if (!showDir) return res.status(404).json({ error: 'Show not found' });
   try {
     const dirs = fs.readdirSync(showDir).filter((f) =>
       !f.startsWith('.') && fs.statSync(path.join(showDir, f)).isDirectory()
@@ -349,7 +463,9 @@ app.get('/api/tv/:show/seasons', (req, res) => {
 });
 
 app.get('/api/tv/:show/:season/episodes', (req, res) => {
-  const seasonDir = path.join(TV_DIR, req.params.show, req.params.season);
+  const showDir = findTvShowDir(req.params.show);
+  if (!showDir) return res.status(404).json({ error: 'Show not found' });
+  const seasonDir = path.join(showDir, req.params.season);
   if (!fs.existsSync(seasonDir)) return res.status(404).json({ error: 'Season not found' });
   try {
     const files = listVideoFiles(seasonDir);
@@ -360,7 +476,9 @@ app.get('/api/tv/:show/:season/episodes', (req, res) => {
 });
 
 app.get('/api/tv/:show/:season/stream/:filename', (req, res) => {
-  streamFile(path.join(TV_DIR, req.params.show, req.params.season, req.params.filename), req, res);
+  const showDir = findTvShowDir(req.params.show);
+  if (!showDir) return res.status(404).json({ error: 'Show not found' });
+  streamFile(path.join(showDir, req.params.season, req.params.filename), req, res);
 });
 
 // ========== DOWNLOADS ==========
@@ -386,7 +504,9 @@ app.post('/api/download/movie', (req, res) => {
   if (!tmdbId || !title) return res.status(400).json({ error: 'tmdbId and title required' });
 
   const targetName = `${title} (${year || 'Unknown'})`;
-  const item = { type: 'movie', targetName, targetDir: MOVIES_DIR, url: `https://mapple.mov/watch/movie/${tmdbId}`, status: 'queued' };
+  // Use first movies dir as default download target
+  const targetDir = MOVIES_DIRS[0] || '/tmp';
+  const item = { type: 'movie', targetName, targetDir, url: `https://mapple.mov/watch/movie/${tmdbId}`, status: 'queued' };
   downloadQueue.push(item);
   processQueue();
   res.json({ ok: true, message: `Will be saved as: ${targetName}`, queue: downloadQueue.length });
@@ -402,7 +522,11 @@ app.post('/api/download/episode', (req, res) => {
   const ep = String(episode).padStart(2, '0');
   const epTitle = episodeTitle ? ` - ${episodeTitle}` : '';
   const targetName = `S${sn}E${ep}${epTitle}`;
-  const targetDir = path.join(TV_DIR, showName, `Season ${season}`);
+  // Use first TV dir as default, or find existing show dir
+  const existingShowDir = findTvShowDir(showName);
+  const targetDir = existingShowDir
+    ? path.join(existingShowDir, `Season ${season}`)
+    : path.join(TV_DIRS[0] || '/tmp', showName, `Season ${season}`);
   if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
 
   const item = { type: 'episode', targetName, targetDir, url: `https://mapple.mov/watch/tv/${tmdbId}-${season}-${episode}`, status: 'queued' };
@@ -461,6 +585,6 @@ app.get('/api/download/status', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Media server running on http://localhost:${PORT}`);
-  console.log(`Movies: ${MOVIES_DIR}`);
-  console.log(`TV Shows: ${TV_DIR}`);
+  console.log(`Movies dirs: ${MOVIES_DIRS.join(', ')}`);
+  console.log(`TV dirs: ${TV_DIRS.join(', ')}`);
 });

@@ -283,7 +283,7 @@ function Home() {
           <h2 className="section-title">Recommended Movies</h2>
           <div className="carousel-row">
             {filteredRecMovies.slice(0, 12).map((m) => (
-              <MediaCard key={m.id} item={m} type="movie" badge="download" />
+              <MediaCard key={m.id} item={m} type="movie" badge="cloud" />
             ))}
           </div>
         </section>
@@ -294,7 +294,7 @@ function Home() {
           <h2 className="section-title">Recommended TV Shows</h2>
           <div className="carousel-row">
             {filteredRecTv.slice(0, 12).map((s) => (
-              <MediaCard key={s.id} item={s} type="tv" badge="download" />
+              <MediaCard key={s.id} item={s} type="tv" badge="cloud" />
             ))}
           </div>
         </section>

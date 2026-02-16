@@ -5,7 +5,6 @@ import { getMovieDetails, getImageUrl } from '../services/tmdb';
 import { searchLocalMovies, getLocalMovieStreamUrl } from '../services/media';
 import { useUser } from '../contexts/UserContext';
 import NetflixPlayer from '../components/NetflixPlayer';
-import DownloadButton from '../components/DownloadButton';
 import SaveOfflineButton from '../components/SaveOfflineButton';
 import './MovieDetail.css';
 
@@ -168,22 +167,7 @@ function MovieDetail() {
               )}
             </div>
             <div className="detail-info">
-              <div className="detail-title-row">
-                <h1 className="detail-title">{movie.title}</h1>
-                {!localFile && !localSearching && (
-                  <DownloadButton
-                    type="movie"
-                    tmdbId={id}
-                    title={movie.title}
-                    year={year}
-                    onComplete={() => {
-                      searchLocalMovies(movie.title).then((res) => {
-                        if (res.data.length > 0) setLocalFile(res.data[0]);
-                      }).catch(() => {});
-                    }}
-                  />
-                )}
-              </div>
+              <h1 className="detail-title">{movie.title}</h1>
               {movie.tagline && <p className="detail-tagline">{movie.tagline}</p>}
               <div className="detail-meta">
                 <span className="detail-rating">

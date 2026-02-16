@@ -8,7 +8,8 @@ import './TvShowDetail.css';
 
 function TvShowDetail() {
   const { id } = useParams();
-  const { currentUser, addToWatchlist, removeFromWatchlist } = useUser();
+  const { currentUser, addToWatchlist, removeFromWatchlist, sendNotification } = useUser();
+  const isFiifi = currentUser?.username?.toLowerCase() === 'fiifi';
   const [show, setShow] = useState(null);
   const [loading, setLoading] = useState(true);
   const [localShow, setLocalShow] = useState(null);
@@ -16,6 +17,7 @@ function TvShowDetail() {
   const [newEpisodes, setNewEpisodes] = useState(0);
   const [upcomingEpisodes, setUpcomingEpisodes] = useState(0);
   const [nextAirDate, setNextAirDate] = useState(null);
+  const [requestSent, setRequestSent] = useState(false);
 
   useEffect(() => {
     const fetchShow = async () => {
@@ -176,7 +178,19 @@ function TvShowDetail() {
               )}
               {newEpisodes > 0 && (
                 <div className="new-episodes-banner">
-                  <FaBell /> {newEpisodes} new episode{newEpisodes !== 1 ? 's' : ''} available to download
+                  <FaBell /> {newEpisodes} new episode{newEpisodes !== 1 ? 's' : ''} available
+                  {!isFiifi && (
+                    <button
+                      className="request-download-btn"
+                      disabled={requestSent}
+                      onClick={async () => {
+                        await sendNotification(show.name, id, `${newEpisodes} new episode${newEpisodes !== 1 ? 's' : ''}`);
+                        setRequestSent(true);
+                      }}
+                    >
+                      {requestSent ? 'Requested' : 'Request Download'}
+                    </button>
+                  )}
                 </div>
               )}
               {upcomingEpisodes > 0 && nextAirDate && (

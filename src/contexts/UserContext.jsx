@@ -130,12 +130,59 @@ export function UserProvider({ children }) {
     }
   };
 
+  const updateProfile = async (username, currentPin, newPin) => {
+    if (!currentUser) return;
+    const res = await api().put(`/api/users/${currentUser.id}/profile`, {
+      username: username || undefined,
+      currentPin: currentPin || undefined,
+      newPin: newPin || undefined,
+    });
+    setCurrentUser((prev) => ({ ...prev, ...res.data }));
+    await fetchUsers();
+    return res.data;
+  };
+
+  const sendNotification = async (showName, showId, message) => {
+    if (!currentUser || !isServerConfigured()) return;
+    try {
+      await api().post('/api/notifications', {
+        fromUser: currentUser.username,
+        showName,
+        showId,
+        message,
+      });
+    } catch {
+      // Silently fail
+    }
+  };
+
+  const getNotifications = useCallback(async () => {
+    if (!isServerConfigured()) return [];
+    try {
+      const res = await api().get('/api/notifications');
+      return res.data;
+    } catch {
+      return [];
+    }
+  }, [api]);
+
+  const dismissNotification = useCallback(async (notifId) => {
+    if (!isServerConfigured()) return [];
+    try {
+      const res = await api().delete(`/api/notifications/${notifId}`);
+      return res.data;
+    } catch {
+      return [];
+    }
+  }, [api]);
+
   return (
     <UserContext.Provider value={{
       users, currentUser, loading,
       createUser, login, logout,
       updateWatchHistory, clearContinueWatching, refreshHistory, fetchUsers,
       addToWatchlist, removeFromWatchlist,
+      updateProfile, sendNotification, getNotifications, dismissNotification,
     }}>
       {children}
     </UserContext.Provider>

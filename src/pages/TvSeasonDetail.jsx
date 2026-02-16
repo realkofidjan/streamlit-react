@@ -3,7 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { FaStar, FaArrowLeft, FaPlay, FaHdd, FaCalendar, FaChevronRight } from 'react-icons/fa';
 import { getTvSeasonDetails, getTvShowDetails, getImageUrl } from '../services/tmdb';
 import { searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes } from '../services/media';
-import DownloadButton from '../components/DownloadButton';
 import './TvSeasonDetail.css';
 
 function TvSeasonDetail() {
@@ -149,17 +148,12 @@ function TvSeasonDetail() {
                         <FaPlay /> Play
                       </Link>
                     ) : isAired ? (
-                      <DownloadButton
-                        type="episode"
-                        tmdbId={id}
-                        showName={show?.name || ''}
-                        season={parseInt(seasonNumber)}
-                        episode={ep.episode_number}
-                        episodeTitle={ep.name}
-                        onComplete={() => {
-                          setLocalEpisodes((prev) => new Set([...prev, ep.episode_number]));
-                        }}
-                      />
+                      <Link
+                        to={`/tv/${id}/season/${seasonNumber}/episode/${ep.episode_number}`}
+                        className="episode-play-btn stream"
+                      >
+                        <FaPlay /> Stream
+                      </Link>
                     ) : (
                       <span className="episode-upcoming">
                         <FaCalendar /> Airs {ep.air_date}
