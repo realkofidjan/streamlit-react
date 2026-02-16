@@ -73,9 +73,15 @@
   border-color: var(--primary);
 }
 
-.hero-tab:hover:not(.active) {
+.hero-tab:hover:not(.active),
+.hero-tab:focus-visible:not(.active) {
   background: #2a2a3e;
   color: var(--text-primary);
+}
+
+.hero-tab:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .hero-search-form {

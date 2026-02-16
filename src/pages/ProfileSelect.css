@@ -32,8 +32,21 @@
   transition: transform 0.2s;
 }
 
-.profile-card:hover {
+.profile-card:hover,
+.profile-card:focus-visible {
   transform: scale(1.05);
+}
+
+.profile-card:focus-visible .profile-avatar {
+  border-color: white;
+}
+
+.profile-card:focus-visible .profile-name {
+  color: white;
+}
+
+.profile-card:focus-visible {
+  outline: none;
 }
 
 .profile-avatar {

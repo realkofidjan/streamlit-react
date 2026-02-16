@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { UserProvider, useUser } from './contexts/UserContext';
+import useDpad from './hooks/useDpad';
+import ServerAlert from './components/ServerAlert';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ProfileSelect from './pages/ProfileSelect';
@@ -70,9 +72,11 @@ function AnimatedRoutes() {
 
 function AppRoutes() {
   const { currentUser } = useUser();
+  useDpad();
 
   return (
     <>
+      <ServerAlert />
       {currentUser && <Header />}
       <main>
         <AnimatedRoutes />

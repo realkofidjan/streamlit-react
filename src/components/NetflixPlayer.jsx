@@ -105,6 +105,12 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes })
     };
   }, [playing, onProgress]);
 
+  // Mark player as active for D-pad hook
+  useEffect(() => {
+    document.body.setAttribute('data-player-active', '');
+    return () => document.body.removeAttribute('data-player-active');
+  }, []);
+
   // Fullscreen change listener
   useEffect(() => {
     const handleFsChange = () => {

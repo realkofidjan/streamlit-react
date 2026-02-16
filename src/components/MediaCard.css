@@ -147,6 +147,20 @@
   margin-top: 0.25rem;
 }
 
+.media-card:focus-visible {
+  transform: translateY(-5px);
+  box-shadow: 0 0 0 3px var(--primary), var(--shadow-lg);
+  outline: none;
+}
+
+.media-card:focus-visible .media-card-overlay {
+  opacity: 1;
+}
+
+.media-card:focus-visible .media-card-poster img {
+  transform: scale(1.05);
+}
+
 @media (max-width: 480px) {
   .media-card-info {
     padding: 0.5rem;

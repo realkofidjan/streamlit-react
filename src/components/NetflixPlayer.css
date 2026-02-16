@@ -105,8 +105,14 @@
   transition: background 0.15s, transform 0.1s;
 }
 
-.vp-icon-btn:hover {
+.vp-icon-btn:hover,
+.vp-icon-btn:focus-visible {
   background: rgba(17, 17, 17, 0.8);
+}
+
+.vp-icon-btn:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
 }
 
 .vp-icon-btn:active {
@@ -358,8 +364,14 @@
   transition: background 0.15s;
 }
 
-.vp-episode-item:hover:not(:disabled) {
+.vp-episode-item:hover:not(:disabled),
+.vp-episode-item:focus-visible:not(:disabled) {
   background: rgba(255, 255, 255, 0.08);
+}
+
+.vp-episode-item:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
 }
 
 .vp-episode-item:disabled {

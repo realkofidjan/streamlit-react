@@ -107,8 +107,14 @@
   transition: transform 0.2s;
 }
 
-.continue-card:hover {
+.continue-card:hover,
+.continue-card:focus-visible {
   transform: scale(1.05);
+}
+
+.continue-card:focus-visible {
+  box-shadow: 0 0 0 3px var(--primary);
+  outline: none;
 }
 
 .continue-card img {
@@ -165,8 +171,14 @@
   text-decoration: none;
 }
 
-.offline-card:hover {
+.offline-card:hover,
+.offline-card:focus-visible {
   transform: scale(1.05);
+}
+
+.offline-card:focus-visible {
+  box-shadow: 0 0 0 3px var(--primary);
+  outline: none;
 }
 
 .offline-card img {

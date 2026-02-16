@@ -66,6 +66,45 @@ button {
   background: #555;
 }
 
+/* ===== D-pad / TV focus styles ===== */
+*:focus {
+  outline: none;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex="0"]:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Server alert banner */
+.server-alert {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9998;
+  background: rgba(229, 9, 20, 0.95);
+  color: white;
+  text-align: center;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.server-alert + .header {
+  top: 38px;
+}
+
 /* Touch-friendly tap targets */
 @media (max-width: 768px) {
   button, a {
