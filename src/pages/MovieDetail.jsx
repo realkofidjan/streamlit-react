@@ -6,6 +6,7 @@ import { searchLocalMovies, getLocalMovieStreamUrl } from '../services/media';
 import { useUser } from '../contexts/UserContext';
 import NetflixPlayer from '../components/NetflixPlayer';
 import SaveOfflineButton from '../components/SaveOfflineButton';
+import { isVideoOffline, getOfflineVideoUrl } from '../services/offlineStorage';
 import './MovieDetail.css';
 
 function MovieDetail() {
@@ -19,6 +20,7 @@ function MovieDetail() {
   const [showPlayer, setShowPlayer] = useState(false);
   const [localFile, setLocalFile] = useState(null);
   const [localSearching, setLocalSearching] = useState(false);
+  const [offlineBlobUrl, setOfflineBlobUrl] = useState(null);
   const autoplayTriggered = useRef(false);
 
   useEffect(() => {
@@ -62,13 +64,27 @@ function MovieDetail() {
     findLocal();
   }, [movie]);
 
+  // Resolve offline blob URL if video is saved
+  useEffect(() => {
+    const cacheKey = `movie-${id}`;
+    if (!isVideoOffline(cacheKey)) return;
+    let revoke;
+    getOfflineVideoUrl(cacheKey).then((url) => {
+      if (url) {
+        setOfflineBlobUrl(url);
+        revoke = url;
+      }
+    });
+    return () => { if (revoke) URL.revokeObjectURL(revoke); };
+  }, [id]);
+
   // Auto-play from continue watching
   useEffect(() => {
-    if (autoplay && localFile && !autoplayTriggered.current) {
+    if (autoplay && (localFile || offlineBlobUrl) && !autoplayTriggered.current) {
       autoplayTriggered.current = true;
       setShowPlayer(true);
     }
-  }, [autoplay, localFile]);
+  }, [autoplay, localFile, offlineBlobUrl]);
 
   useEffect(() => {
     if (showPlayer) {
@@ -108,6 +124,7 @@ function MovieDetail() {
   const cast = movie.credits?.cast?.slice(0, 12) || [];
   const director = movie.credits?.crew?.find((c) => c.job === 'Director');
   const localStreamUrl = localFile ? getLocalMovieStreamUrl(localFile.filename) : null;
+  const playbackUrl = offlineBlobUrl || localStreamUrl;
   const year = movie.release_date ? new Date(movie.release_date).getFullYear() : '';
 
   return (
@@ -130,14 +147,14 @@ function MovieDetail() {
           <button className="play-button" onClick={() => setShowPlayer(true)}>
             <FaPlay />
           </button>
-          <p className="play-label">{localFile ? 'Watch Now' : 'Stream Online'}</p>
+          <p className="play-label">{offlineBlobUrl ? 'Watch Offline' : localFile ? 'Watch Now' : 'Stream Online'}</p>
         </div>
       </div>
 
       {showPlayer && (
-        localFile && localStreamUrl ? (
+        playbackUrl ? (
           <NetflixPlayer
-            src={localStreamUrl}
+            src={playbackUrl}
             title={movie.title}
             onClose={() => setShowPlayer(false)}
             onProgress={handleProgress}
@@ -183,7 +200,11 @@ function MovieDetail() {
                 </span>
               </div>
               <div className="detail-actions-stack">
-                {localFile ? (
+                {offlineBlobUrl ? (
+                  <div className="local-badge">
+                    <FaHdd /> Saved offline — ready to watch
+                  </div>
+                ) : localFile ? (
                   <div className="local-badge">
                     <FaHdd /> Available on your drive
                   </div>

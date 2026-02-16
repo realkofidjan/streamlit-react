@@ -130,6 +130,14 @@ export function UserProvider({ children }) {
     }
   };
 
+  const deleteUser = async (userId, pin) => {
+    await api().delete(`/api/users/${userId}`, { data: { pin } });
+    if (currentUser?.id === userId) {
+      logout();
+    }
+    await fetchUsers();
+  };
+
   const updateProfile = async (username, currentPin, newPin) => {
     if (!currentUser) return;
     const res = await api().put(`/api/users/${currentUser.id}/profile`, {
@@ -179,7 +187,7 @@ export function UserProvider({ children }) {
   return (
     <UserContext.Provider value={{
       users, currentUser, loading,
-      createUser, login, logout,
+      createUser, login, logout, deleteUser,
       updateWatchHistory, clearContinueWatching, refreshHistory, fetchUsers,
       addToWatchlist, removeFromWatchlist,
       updateProfile, sendNotification, getNotifications, dismissNotification,

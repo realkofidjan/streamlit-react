@@ -278,6 +278,17 @@ app.delete('/api/users/:id/watchlist/:type/:mediaId', (req, res) => {
   res.json(user.watchlist);
 });
 
+app.delete('/api/users/:id', (req, res) => {
+  const users = readUsers();
+  const index = users.findIndex((u) => u.id === req.params.id);
+  if (index === -1) return res.status(404).json({ error: 'User not found' });
+  const { pin } = req.body || {};
+  if (users[index].pin !== String(pin)) return res.status(401).json({ error: 'Invalid PIN' });
+  users.splice(index, 1);
+  writeUsers(users);
+  res.json({ success: true });
+});
+
 // ========== PROFILE ==========
 
 app.put('/api/users/:id/profile', (req, res) => {

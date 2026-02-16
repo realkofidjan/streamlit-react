@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { FaServer, FaCheck, FaSpinner, FaTimes, FaSync, FaHdd, FaFolder, FaArrowLeft, FaBell, FaUser, FaKey, FaPlus, FaTrash } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom';
+import { FaServer, FaCheck, FaSpinner, FaTimes, FaSync, FaHdd, FaFolder, FaArrowLeft, FaBell, FaUser, FaKey, FaPlus, FaTrash, FaExclamationTriangle } from 'react-icons/fa';
 import { getMediaUrl, setMediaUrl } from '../services/media';
 import { useUser } from '../contexts/UserContext';
 import './Settings.css';
 
 function Settings() {
-  const { currentUser, updateProfile, getNotifications, dismissNotification } = useUser();
+  const navigate = useNavigate();
+  const { currentUser, updateProfile, deleteUser, getNotifications, dismissNotification } = useUser();
   const [url, setUrl] = useState('');
   const [status, setStatus] = useState(null);
   const [movieCount, setMovieCount] = useState(0);
@@ -24,6 +25,12 @@ function Settings() {
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [profileMsg, setProfileMsg] = useState(null);
+
+  // Delete account
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePin, setDeletePin] = useState('');
+  const [deleteError, setDeleteError] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Notifications (Fiifi only)
   const [notifications, setNotifications] = useState([]);
@@ -123,6 +130,20 @@ function Settings() {
       setNewPin('');
     } catch (err) {
       setProfileMsg({ type: 'error', text: err.response?.data?.error || 'Failed to update' });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!currentUser || !deletePin) return;
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      await deleteUser(currentUser.id, deletePin);
+      navigate('/profiles');
+    } catch (err) {
+      setDeleteError(err.response?.data?.error || 'Failed to delete account');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -240,6 +261,49 @@ function Settings() {
             <button className="settings-btn save profile-save" onClick={handleProfileSave}>
               Save Profile
             </button>
+
+            <div className="delete-account-section">
+              {!showDeleteConfirm ? (
+                <button className="delete-account-btn" onClick={() => setShowDeleteConfirm(true)}>
+                  <FaTrash /> Delete Account
+                </button>
+              ) : (
+                <div className="delete-confirm-box">
+                  <div className="delete-confirm-header">
+                    <FaExclamationTriangle /> Delete your account?
+                  </div>
+                  <p className="delete-confirm-text">
+                    This will permanently remove your profile, watch history, and watchlist. This cannot be undone.
+                  </p>
+                  <label className="settings-label">Enter your PIN to confirm</label>
+                  <div className="settings-input-row">
+                    <input
+                      type="password"
+                      className="settings-input pin-input"
+                      value={deletePin}
+                      onChange={(e) => setDeletePin(e.target.value)}
+                      placeholder="PIN"
+                      maxLength={4}
+                    />
+                    <button
+                      className="settings-btn delete-confirm"
+                      onClick={handleDeleteAccount}
+                      disabled={!deletePin || deleting}
+                    >
+                      {deleting ? <FaSpinner className="spin" /> : 'Delete'}
+                    </button>
+                    <button className="settings-btn test" onClick={() => { setShowDeleteConfirm(false); setDeletePin(''); setDeleteError(null); }}>
+                      Cancel
+                    </button>
+                  </div>
+                  {deleteError && (
+                    <div className="settings-status offline">
+                      <FaTimes /> {deleteError}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

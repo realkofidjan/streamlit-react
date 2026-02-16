@@ -75,6 +75,21 @@ export async function removeOfflineVideo(key) {
   setMetadata(meta);
 }
 
+export async function getOfflineVideoUrl(key) {
+  const meta = getMetadata();
+  const entry = meta[key];
+  if (!entry?.streamUrl) return null;
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    const response = await cache.match(entry.streamUrl);
+    if (!response) return null;
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  } catch {
+    return null;
+  }
+}
+
 export function formatFileSize(bytes) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(0)} MB`;

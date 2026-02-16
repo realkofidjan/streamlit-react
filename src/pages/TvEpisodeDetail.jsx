@@ -6,6 +6,7 @@ import { searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes, getLocalTvSt
 import { useUser } from '../contexts/UserContext';
 import NetflixPlayer from '../components/NetflixPlayer';
 import SaveOfflineButton from '../components/SaveOfflineButton';
+import { isVideoOffline, getOfflineVideoUrl } from '../services/offlineStorage';
 import './TvEpisodeDetail.css';
 
 function TvEpisodeDetail() {
@@ -26,6 +27,7 @@ function TvEpisodeDetail() {
   const [localSeasonFolder, setLocalSeasonFolder] = useState(null);
   const [localEpisodeSet, setLocalEpisodeSet] = useState(new Set());
   const [nextEpLocal, setNextEpLocal] = useState(false);
+  const [offlineBlobUrl, setOfflineBlobUrl] = useState(null);
   const autoplayTriggered = useRef(false);
 
   useEffect(() => {
@@ -96,13 +98,27 @@ function TvEpisodeDetail() {
     checkLocal();
   }, [show, seasonNumber, episodeNumber]);
 
+  // Resolve offline blob URL if video is saved
+  useEffect(() => {
+    const cacheKey = `episode-${id}-s${seasonNumber}e${episodeNumber}`;
+    if (!isVideoOffline(cacheKey)) return;
+    let revoke;
+    getOfflineVideoUrl(cacheKey).then((url) => {
+      if (url) {
+        setOfflineBlobUrl(url);
+        revoke = url;
+      }
+    });
+    return () => { if (revoke) URL.revokeObjectURL(revoke); };
+  }, [id, seasonNumber, episodeNumber]);
+
   // Auto-play from continue watching
   useEffect(() => {
-    if (autoplay && localStreamUrl && !autoplayTriggered.current) {
+    if (autoplay && (localStreamUrl || offlineBlobUrl) && !autoplayTriggered.current) {
       autoplayTriggered.current = true;
       setShowPlayer(true);
     }
-  }, [autoplay, localStreamUrl]);
+  }, [autoplay, localStreamUrl, offlineBlobUrl]);
 
   useEffect(() => {
     if (showPlayer) {
@@ -178,16 +194,18 @@ function TvEpisodeDetail() {
                 <FaPlay />
               </button>
             )}
-            {localStreamUrl && (
+            {offlineBlobUrl ? (
+              <div className="local-badge"><FaHdd /> Saved offline</div>
+            ) : localStreamUrl ? (
               <div className="local-badge"><FaHdd /> On your drive</div>
-            )}
+            ) : null}
           </div>
         </div>
 
         {showPlayer && (
-          localStreamUrl ? (
+          (offlineBlobUrl || localStreamUrl) ? (
             <NetflixPlayer
-              src={localStreamUrl}
+              src={offlineBlobUrl || localStreamUrl}
               title={`${show?.name || ''} - S${seasonNumber}E${episodeNumber} - ${episode.name}`}
               onClose={() => setShowPlayer(false)}
               onProgress={handleProgress}
