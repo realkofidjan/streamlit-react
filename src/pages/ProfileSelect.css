@@ -203,3 +203,29 @@
   outline: none;
   border-color: var(--primary);
 }
+
+/* Setup message when no server configured */
+.profile-setup-msg {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.profile-setup-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--primary);
+  color: white;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.profile-setup-btn:hover {
+  opacity: 0.9;
+}

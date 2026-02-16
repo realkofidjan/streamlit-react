@@ -6,6 +6,7 @@ import { searchLocalMovies, getLocalMovieStreamUrl } from '../services/media';
 import { useUser } from '../contexts/UserContext';
 import NetflixPlayer from '../components/NetflixPlayer';
 import DownloadButton from '../components/DownloadButton';
+import SaveOfflineButton from '../components/SaveOfflineButton';
 import './MovieDetail.css';
 
 function MovieDetail() {
@@ -205,6 +206,18 @@ function MovieDetail() {
                 <div className="download-badge">
                   Not on your drive — download to watch
                 </div>
+              )}
+              {localFile && localStreamUrl && (
+                <SaveOfflineButton
+                  cacheKey={`movie-${id}`}
+                  streamUrl={localStreamUrl}
+                  metadata={{
+                    title: movie.title,
+                    posterPath: movie.poster_path,
+                    type: 'movie',
+                    linkTo: `/movie/${id}`,
+                  }}
+                />
               )}
               {(() => {
                 const inWatchlist = currentUser?.watchlist?.movies?.[id];

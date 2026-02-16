@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { getMediaUrl } from '../services/media';
+import { getMediaUrl, isServerConfigured } from '../services/media';
 
 const UserContext = createContext(null);
 
@@ -16,6 +16,7 @@ export function UserProvider({ children }) {
   const api = useCallback(() => axios.create({ baseURL: getMediaUrl() }), []);
 
   const fetchUsers = useCallback(async () => {
+    if (!isServerConfigured()) return;
     try {
       const res = await api().get('/api/users');
       setUsers(res.data);
@@ -27,6 +28,7 @@ export function UserProvider({ children }) {
   // Restore session from localStorage on mount
   useEffect(() => {
     const restore = async () => {
+      if (!isServerConfigured()) { setLoading(false); return; }
       try {
         await fetchUsers();
         const savedId = localStorage.getItem('streamit_userId');

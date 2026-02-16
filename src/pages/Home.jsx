@@ -6,6 +6,7 @@ import { useUser } from '../contexts/UserContext';
 import { getLibrary } from '../services/media';
 import { searchMovies, searchTvShows, getTvShowDetails, getRecommendedMovies, getRecommendedTvShows, getImageUrl } from '../services/tmdb';
 import { cleanName, extractYear, pickBestResult } from '../utils/matchTmdb';
+import { getOfflineVideos, removeOfflineVideo, formatFileSize } from '../services/offlineStorage';
 import './Home.css';
 
 function Home() {
@@ -16,7 +17,12 @@ function Home() {
   const [recommendedMovies, setRecommendedMovies] = useState([]);
   const [recommendedTv, setRecommendedTv] = useState([]);
   const [tvBadges, setTvBadges] = useState({});
+  const [offlineVideos, setOfflineVideos] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setOfflineVideos(getOfflineVideos());
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -226,6 +232,25 @@ function Home() {
           <div className="carousel-row">
             {watchlistItems.map((item) => (
               <MediaCard key={`${item._type}-${item.id}`} item={item} type={item._type} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {offlineVideos.length > 0 && (
+        <section className="section container">
+          <h2 className="section-title">Saved Offline <span className="section-count">{offlineVideos.length}</span></h2>
+          <div className="carousel-row">
+            {offlineVideos.map((v) => (
+              <Link key={v.key} to={v.linkTo} className="offline-card">
+                {v.posterPath ? (
+                  <img src={getImageUrl(v.posterPath, 'w300')} alt={v.title} />
+                ) : (
+                  <div className="offline-no-img">{v.title}</div>
+                )}
+                <span className="offline-card-title">{v.title}</span>
+                <span className="offline-card-size">{formatFileSize(v.size)}</span>
+              </Link>
             ))}
           </div>
         </section>

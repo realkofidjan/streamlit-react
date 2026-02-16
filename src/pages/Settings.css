@@ -3,6 +3,21 @@
   padding: 3rem 0;
 }
 
+.settings-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.settings-back:hover {
+  color: var(--text-primary);
+}
+
 .settings-title {
   display: flex;
   align-items: center;

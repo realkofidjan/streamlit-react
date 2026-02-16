@@ -1,9 +1,20 @@
 import axios from 'axios';
 
-const DEFAULT_URL = import.meta.env.VITE_MEDIA_SERVER_URL || `http://${window.location.hostname}:4000`;
+function getDefaultUrl() {
+  if (import.meta.env.VITE_MEDIA_SERVER_URL) return import.meta.env.VITE_MEDIA_SERVER_URL;
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) {
+    return `http://${host}:4000`;
+  }
+  return '';
+}
 
 export function getMediaUrl() {
-  return localStorage.getItem('mediaServerUrl') || DEFAULT_URL;
+  return localStorage.getItem('mediaServerUrl') || getDefaultUrl();
+}
+
+export function isServerConfigured() {
+  return !!getMediaUrl();
 }
 
 export function setMediaUrl(url) {

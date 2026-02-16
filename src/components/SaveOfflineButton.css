@@ -1,0 +1,51 @@
+.offline-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.offline-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.offline-btn.downloading {
+  color: #3b82f6;
+  border-color: #3b82f6;
+  cursor: default;
+}
+
+.offline-btn.saved {
+  color: #22c55e;
+  border-color: #22c55e;
+  cursor: default;
+}
+
+.offline-btn-group {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.offline-btn.remove {
+  padding: 0.5rem;
+  color: var(--text-muted);
+  border-color: var(--border-color);
+}
+
+.offline-btn.remove:hover {
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}

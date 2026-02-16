@@ -6,6 +6,7 @@ import { searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes, getLocalTvSt
 import { useUser } from '../contexts/UserContext';
 import NetflixPlayer from '../components/NetflixPlayer';
 import DownloadButton from '../components/DownloadButton';
+import SaveOfflineButton from '../components/SaveOfflineButton';
 import './TvEpisodeDetail.css';
 
 function TvEpisodeDetail() {
@@ -283,6 +284,18 @@ function TvEpisodeDetail() {
               )}
             </div>
           </div>
+          {localStreamUrl && (
+            <SaveOfflineButton
+              cacheKey={`episode-${id}-s${seasonNumber}e${episodeNumber}`}
+              streamUrl={localStreamUrl}
+              metadata={{
+                title: `${show?.name || ''} S${seasonNumber}E${episodeNumber} - ${episode.name}`,
+                posterPath: show?.poster_path,
+                type: 'episode',
+                linkTo: `/tv/${id}/season/${seasonNumber}/episode/${episodeNumber}`,
+              }}
+            />
+          )}
 
           {episode.overview && (
             <div className="episode-detail-overview">

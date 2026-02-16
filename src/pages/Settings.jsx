@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { FaServer, FaCheck, FaSpinner, FaTimes, FaSync, FaHdd, FaFolder } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
+import { FaServer, FaCheck, FaSpinner, FaTimes, FaSync, FaHdd, FaFolder, FaArrowLeft } from 'react-icons/fa';
 import { getMediaUrl, setMediaUrl } from '../services/media';
 import { useUser } from '../contexts/UserContext';
 import './Settings.css';
@@ -87,6 +88,7 @@ function Settings() {
   return (
     <div className="settings-page">
       <div className="container">
+        <Link to={currentUser ? '/' : '/profiles'} className="settings-back"><FaArrowLeft /> Back</Link>
         <h1 className="settings-title"><FaServer /> Media Server</h1>
         <p className="settings-desc">
           Paste your Cloudflare Tunnel URL here so the app can stream movies from your drive.

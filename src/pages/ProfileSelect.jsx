@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaUser } from 'react-icons/fa';
+import { useNavigate, Link } from 'react-router-dom';
+import { FaPlus, FaUser, FaCog } from 'react-icons/fa';
 import { useUser } from '../contexts/UserContext';
+import { isServerConfigured } from '../services/media';
 import './ProfileSelect.css';
 
 const AVATARS = ['#e50914', '#3498db', '#2ecc71', '#9b59b6', '#f39c12', '#1abc9c'];
@@ -127,6 +128,18 @@ function ProfileSelect() {
             </button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (!isServerConfigured()) {
+    return (
+      <div className="profile-page">
+        <h1 className="profile-heading">StreamIt</h1>
+        <p className="profile-setup-msg">
+          No media server configured. Set your server URL in Settings to get started.
+        </p>
+        <Link to="/settings" className="profile-setup-btn"><FaCog /> Go to Settings</Link>
       </div>
     );
   }

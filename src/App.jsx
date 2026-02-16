@@ -62,7 +62,7 @@ function AnimatedRoutes() {
         <Route path="/tv/:id/season/:seasonNumber" element={<AuthGuard><PageWrapper><TvSeasonDetail /></PageWrapper></AuthGuard>} />
         <Route path="/tv/:id/season/:seasonNumber/episode/:episodeNumber" element={<AuthGuard><PageWrapper><TvEpisodeDetail /></PageWrapper></AuthGuard>} />
         <Route path="/search" element={<AuthGuard><PageWrapper><SearchResults /></PageWrapper></AuthGuard>} />
-        <Route path="/settings" element={<AuthGuard><PageWrapper><Settings /></PageWrapper></AuthGuard>} />
+        <Route path="/settings" element={<PageWrapper><Settings /></PageWrapper>} />
       </Routes>
     </AnimatePresence>
   );
