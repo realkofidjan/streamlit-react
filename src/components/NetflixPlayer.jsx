@@ -63,14 +63,27 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes })
       switch (e.key) {
         case ' ':
         case 'k':
+        case 'Enter':
+        case 'MediaPlayPause':
           e.preventDefault();
+          e.stopPropagation();
           togglePlay();
           break;
+        case 'MediaPlay':
+          e.preventDefault();
+          if (vid.paused) vid.play();
+          break;
+        case 'MediaPause':
+          e.preventDefault();
+          if (!vid.paused) vid.pause();
+          break;
         case 'ArrowLeft':
+        case 'MediaRewind':
           e.preventDefault();
           skip(-10);
           break;
         case 'ArrowRight':
+        case 'MediaFastForward':
           e.preventDefault();
           skip(10);
           break;
@@ -83,6 +96,7 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes })
           toggleFullscreen();
           break;
         case 'Escape':
+        case 'GoBack':
           e.preventDefault();
           if (showEpisodes) setShowEpisodes(false);
           else if (fullscreen) toggleFullscreen();
@@ -272,11 +286,19 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes })
             // For transcoded streams, vid.duration may be Infinity or unknown
             // Keep existing duration if we already have one (from a seek reload)
             if (vid.duration && isFinite(vid.duration) && vid.duration > 0) {
-              setDuration(seekOffsetRef.current + vid.duration);
+              const total = seekOffsetRef.current + vid.duration;
+              setDuration(total);
+              // If resume position is > 95% of total, restart from beginning
+              if (seekOffsetRef.current > total * 0.95) {
+                seekOffsetRef.current = 0;
+                const base = src.split('?')[0];
+                setVideoSrc(base);
+                setCurrentTime(0);
+              }
             }
           } else {
             setDuration(vid.duration || 0);
-            if (startTime && startTime > 0 && startTime < vid.duration) {
+            if (startTime && startTime > 0 && startTime < vid.duration * 0.95) {
               vid.currentTime = startTime;
             }
           }
@@ -322,7 +344,7 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes })
             transition={{ duration: 0.3 }}
           >
             <span className="vp-title">{title}</span>
-            <button className="vp-icon-btn" onClick={onClose}>
+            <button className="vp-icon-btn" tabIndex={-1} onClick={onClose}>
               <X size={22} />
             </button>
           </motion.div>
@@ -362,21 +384,21 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes })
               <span className="vp-time">{formatTime(duration)}</span>
             </div>
 
-            {/* Controls row */}
+            {/* Controls row — tabIndex={-1} prevents TV remote from focusing individual buttons */}
             <div className="vp-controls-row">
               <div className="vp-controls-left">
-                <button className="vp-icon-btn" onClick={togglePlay}>
+                <button className="vp-icon-btn" tabIndex={-1} onClick={togglePlay}>
                   {playing ? <Pause size={20} /> : <Play size={20} fill="white" />}
                 </button>
-                <button className="vp-icon-btn" onClick={() => skip(-10)}>
+                <button className="vp-icon-btn" tabIndex={-1} onClick={() => skip(-10)}>
                   <SkipBack size={18} />
                 </button>
-                <button className="vp-icon-btn" onClick={() => skip(10)}>
+                <button className="vp-icon-btn" tabIndex={-1} onClick={() => skip(10)}>
                   <SkipForward size={18} />
                 </button>
 
                 <div className="vp-volume-group">
-                  <button className="vp-icon-btn" onClick={toggleMute}>
+                  <button className="vp-icon-btn" tabIndex={-1} onClick={toggleMute}>
                     {muted || volume === 0 ? <VolumeX size={18} /> :
                      volume > 0.5 ? <Volume2 size={18} /> : <Volume1 size={18} />}
                   </button>
@@ -405,6 +427,7 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes })
                     <button
                       key={speed}
                       className={`vp-speed-btn ${playbackSpeed === speed ? 'active' : ''}`}
+                      tabIndex={-1}
                       onClick={() => setSpeed(speed)}
                     >
                       {speed}x
@@ -416,6 +439,7 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes })
                 {episodes && (
                   <button
                     className={`vp-icon-btn ${showEpisodes ? 'active' : ''}`}
+                    tabIndex={-1}
                     onClick={() => setShowEpisodes(!showEpisodes)}
                     title="Episodes"
                   >
@@ -423,7 +447,7 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes })
                   </button>
                 )}
 
-                <button className="vp-icon-btn" onClick={toggleFullscreen}>
+                <button className="vp-icon-btn" tabIndex={-1} onClick={toggleFullscreen}>
                   {fullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
                 </button>
               </div>
