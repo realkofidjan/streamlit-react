@@ -1,0 +1,205 @@
+.profile-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-dark);
+  padding: 2rem;
+}
+
+.profile-heading {
+  font-size: 2rem;
+  margin-bottom: 2.5rem;
+  color: var(--text-primary);
+}
+
+.profile-grid {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.profile-card:hover {
+  transform: scale(1.05);
+}
+
+.profile-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  font-weight: 700;
+  color: white;
+  border: 3px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.profile-card:hover .profile-avatar {
+  border-color: white;
+}
+
+.add-avatar {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--text-secondary);
+  font-size: 2rem;
+}
+
+.profile-name {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.profile-card:hover .profile-name {
+  color: white;
+}
+
+/* PIN Screen */
+.profile-pin-screen,
+.profile-create-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.profile-pin-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: white;
+}
+
+.profile-pin-label {
+  color: var(--text-secondary);
+}
+
+.pin-input-row {
+  display: flex;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.pin-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.pin-dot.filled {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.pin-hidden-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.pin-error {
+  color: var(--primary);
+  font-size: 0.9rem;
+}
+
+.pin-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.pin-submit {
+  padding: 0.6rem 2rem;
+  background: var(--primary);
+  color: white;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.pin-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pin-back {
+  padding: 0.6rem 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.pin-back:hover {
+  color: white;
+}
+
+/* Create Screen */
+.create-avatar-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+}
+
+.create-avatars {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.avatar-pick {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.avatar-pick.selected {
+  border-color: white;
+}
+
+.create-input {
+  width: 250px;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 1rem;
+  text-align: center;
+}
+
+.create-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}

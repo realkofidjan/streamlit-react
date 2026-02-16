@@ -1,19 +1,25 @@
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { FaStar, FaClock, FaCalendar, FaPlay, FaTimes, FaHdd, FaExclamationTriangle } from 'react-icons/fa';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { FaStar, FaClock, FaCalendar, FaPlay, FaHdd, FaChevronRight, FaBookmark, FaRegBookmark } from 'react-icons/fa';
 import { getMovieDetails, getImageUrl } from '../services/tmdb';
 import { searchLocalMovies, getLocalMovieStreamUrl } from '../services/media';
+import { useUser } from '../contexts/UserContext';
 import NetflixPlayer from '../components/NetflixPlayer';
+import DownloadButton from '../components/DownloadButton';
 import './MovieDetail.css';
 
 function MovieDetail() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const autoplay = searchParams.get('autoplay') === '1';
+  const resumeTime = parseFloat(searchParams.get('t')) || 0;
+  const { currentUser, updateWatchHistory, addToWatchlist, removeFromWatchlist } = useUser();
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showPlayer, setShowPlayer] = useState(false);
   const [localFile, setLocalFile] = useState(null);
   const [localSearching, setLocalSearching] = useState(false);
-  const [adWarningDismissed, setAdWarningDismissed] = useState(false);
+  const autoplayTriggered = useRef(false);
 
   useEffect(() => {
     const fetchMovie = async () => {
@@ -56,6 +62,14 @@ function MovieDetail() {
     findLocal();
   }, [movie]);
 
+  // Auto-play from continue watching
+  useEffect(() => {
+    if (autoplay && localFile && !autoplayTriggered.current) {
+      autoplayTriggered.current = true;
+      setShowPlayer(true);
+    }
+  }, [autoplay, localFile]);
+
   useEffect(() => {
     if (showPlayer) {
       document.body.style.overflow = 'hidden';
@@ -65,13 +79,16 @@ function MovieDetail() {
     return () => { document.body.style.overflow = ''; };
   }, [showPlayer]);
 
-  const handlePlayClick = () => {
-    if (localFile) {
-      setShowPlayer(true);
-    } else {
-      setAdWarningDismissed(false);
-      setShowPlayer(true);
-    }
+  const handleProgress = ({ currentTime, duration }) => {
+    if (!movie) return;
+    const progress = duration > 0 ? currentTime / duration : 0;
+    const status = progress > 0.9 ? 'watched' : 'watching';
+    updateWatchHistory('movie', String(id), {
+      status, progress, currentTime,
+      filename: localFile?.filename,
+      title: movie.title,
+      posterPath: movie.poster_path,
+    });
   };
 
   if (loading) {
@@ -91,7 +108,7 @@ function MovieDetail() {
   const cast = movie.credits?.cast?.slice(0, 12) || [];
   const director = movie.credits?.crew?.find((c) => c.job === 'Director');
   const localStreamUrl = localFile ? getLocalMovieStreamUrl(localFile.filename) : null;
-  const vidfastUrl = `https://vidfast.pro/movie/${id}`;
+  const year = movie.release_date ? new Date(movie.release_date).getFullYear() : '';
 
   return (
     <div className="detail-page">
@@ -100,11 +117,20 @@ function MovieDetail() {
         style={{ backgroundImage: backdropUrl ? `url(${backdropUrl})` : 'none' }}
       >
         <div className="detail-backdrop-overlay" />
+        <div className="detail-breadcrumbs container">
+          <div className="episode-breadcrumbs">
+            <Link to="/">Home</Link>
+            <FaChevronRight className="breadcrumb-sep" />
+            <Link to="/movies">Movies</Link>
+            <FaChevronRight className="breadcrumb-sep" />
+            <span>{movie.title}</span>
+          </div>
+        </div>
         <div className="detail-play-container">
-          <button className="play-button" onClick={handlePlayClick}>
+          <button className="play-button" onClick={() => setShowPlayer(true)}>
             <FaPlay />
           </button>
-          <p className="play-label">Watch Now</p>
+          <p className="play-label">{localFile ? 'Watch Now' : 'Stream Online'}</p>
         </div>
       </div>
 
@@ -114,54 +140,18 @@ function MovieDetail() {
             src={localStreamUrl}
             title={movie.title}
             onClose={() => setShowPlayer(false)}
+            onProgress={handleProgress}
+            startTime={resumeTime || undefined}
           />
         ) : (
-          <div className="video-player-overlay" onClick={() => setShowPlayer(false)}>
-            <div className="video-player-wrapper" onClick={(e) => e.stopPropagation()}>
-              <button className="player-close-btn" onClick={() => setShowPlayer(false)}>
-                <FaTimes />
-              </button>
-
-              {!adWarningDismissed ? (
-                <div className="ad-warning">
-                  <FaExclamationTriangle className="ad-warning-icon" />
-                  <h3>Heads Up</h3>
-                  <p>
-                    This movie is not available on your local drive.
-                    The online player may contain <strong>pop-up ads</strong> and redirects.
-                  </p>
-                  <p className="ad-warning-tip">
-                    Use a browser ad-blocker for the best experience.
-                  </p>
-                  <div className="ad-warning-actions">
-                    <button
-                      className="ad-warning-btn proceed"
-                      onClick={() => setAdWarningDismissed(true)}
-                    >
-                      Continue Anyway
-                    </button>
-                    <button
-                      className="ad-warning-btn cancel"
-                      onClick={() => setShowPlayer(false)}
-                    >
-                      Go Back
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <iframe
-                  src={vidfastUrl}
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  allowFullScreen
-                  referrerPolicy="no-referrer"
-                  allow="autoplay; encrypted-media; picture-in-picture"
-                  title={movie.title}
-                  className="vidfast-iframe"
-                />
-              )}
-            </div>
+          <div className="stream-overlay">
+            <button className="stream-close" onClick={() => setShowPlayer(false)}>&times;</button>
+            <iframe
+              src={`https://mapple.mov/watch/movie/${id}`}
+              className="stream-iframe"
+              allowFullScreen
+              allow="autoplay; encrypted-media"
+            />
           </div>
         )
       )}
@@ -177,7 +167,22 @@ function MovieDetail() {
               )}
             </div>
             <div className="detail-info">
-              <h1 className="detail-title">{movie.title}</h1>
+              <div className="detail-title-row">
+                <h1 className="detail-title">{movie.title}</h1>
+                {!localFile && !localSearching && (
+                  <DownloadButton
+                    type="movie"
+                    tmdbId={id}
+                    title={movie.title}
+                    year={year}
+                    onComplete={() => {
+                      searchLocalMovies(movie.title).then((res) => {
+                        if (res.data.length > 0) setLocalFile(res.data[0]);
+                      }).catch(() => {});
+                    }}
+                  />
+                )}
+              </div>
               {movie.tagline && <p className="detail-tagline">{movie.tagline}</p>}
               <div className="detail-meta">
                 <span className="detail-rating">
@@ -197,10 +202,25 @@ function MovieDetail() {
                   <FaHdd /> Available on your drive
                 </div>
               ) : !localSearching && (
-                <div className="online-badge">
-                  <FaExclamationTriangle /> Online only — may contain ads
+                <div className="download-badge">
+                  Not on your drive — download to watch
                 </div>
               )}
+              {(() => {
+                const inWatchlist = currentUser?.watchlist?.movies?.[id];
+                return (
+                  <button
+                    className={`watchlist-btn${inWatchlist ? ' active' : ''}`}
+                    onClick={() => inWatchlist
+                      ? removeFromWatchlist('movie', id)
+                      : addToWatchlist('movie', id, movie.title, movie.poster_path)
+                    }
+                  >
+                    {inWatchlist ? <FaBookmark /> : <FaRegBookmark />}
+                    {inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
+                  </button>
+                );
+              })()}
               <div className="detail-genres">
                 {movie.genres?.map((g) => (
                   <span key={g.id} className="genre-tag">{g.name}</span>

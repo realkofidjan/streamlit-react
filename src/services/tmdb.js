@@ -40,3 +40,27 @@ export const getTvSeasonDetails = (tvId, seasonNumber) =>
 
 export const getTvEpisodeDetails = (tvId, seasonNumber, episodeNumber) =>
   api.get(`/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}`);
+
+export const getRecommendedMovies = (page = 1) =>
+  api.get('/discover/movie', {
+    params: {
+      page,
+      sort_by: 'popularity.desc',
+      'vote_average.gte': 6.0,
+      'vote_count.gte': 100,
+      'primary_release_date.lte': new Date().toISOString().split('T')[0],
+      with_original_language: 'en',
+    },
+  });
+
+export const getRecommendedTvShows = (page = 1) =>
+  api.get('/discover/tv', {
+    params: {
+      page,
+      sort_by: 'popularity.desc',
+      'vote_average.gte': 6.0,
+      'vote_count.gte': 100,
+      'first_air_date.lte': new Date().toISOString().split('T')[0],
+      with_original_language: 'en',
+    },
+  });

@@ -47,3 +47,34 @@
 .nav-links a:hover {
   color: var(--text-primary);
 }
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+}
+
+.header-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: white;
+}
+
+.header-logout {
+  background: none;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  padding: 0.25rem;
+  transition: color 0.2s;
+}
+
+.header-logout:hover {
+  color: var(--primary);
+}

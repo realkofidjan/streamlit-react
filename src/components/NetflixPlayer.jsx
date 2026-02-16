@@ -1,15 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FaPlay, FaPause, FaTimes, FaExpand, FaCompress,
-  FaVolumeUp, FaVolumeMute, FaUndo, FaRedo
-} from 'react-icons/fa';
+  Play, Pause, X, Maximize, Minimize, Volume2, Volume1, VolumeX,
+  SkipBack, SkipForward, List, ChevronDown
+} from 'lucide-react';
 import './NetflixPlayer.css';
 
-function NetflixPlayer({ src, title, onClose }) {
+function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes }) {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
-  const progressRef = useRef(null);
   const hideTimer = useRef(null);
+  const progressReportTimer = useRef(null);
 
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -20,8 +21,9 @@ function NetflixPlayer({ src, title, onClose }) {
   const [fullscreen, setFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [buffering, setBuffering] = useState(true);
-  const [showCenterIcon, setShowCenterIcon] = useState(null);
-  const [dragging, setDragging] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [showEpisodes, setShowEpisodes] = useState(false);
+  const [selectedSeason, setSelectedSeason] = useState(null);
 
   const showControlsTemporarily = useCallback(() => {
     setShowControls(true);
@@ -33,14 +35,14 @@ function NetflixPlayer({ src, title, onClose }) {
 
   // Auto-hide controls
   useEffect(() => {
-    if (playing) {
+    if (playing && !showEpisodes) {
       hideTimer.current = setTimeout(() => setShowControls(false), 3000);
     } else {
       setShowControls(true);
       clearTimeout(hideTimer.current);
     }
     return () => clearTimeout(hideTimer.current);
-  }, [playing]);
+  }, [playing, showEpisodes]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -71,7 +73,8 @@ function NetflixPlayer({ src, title, onClose }) {
           break;
         case 'Escape':
           e.preventDefault();
-          if (fullscreen) toggleFullscreen();
+          if (showEpisodes) setShowEpisodes(false);
+          else if (fullscreen) toggleFullscreen();
           else onClose();
           break;
       }
@@ -79,7 +82,28 @@ function NetflixPlayer({ src, title, onClose }) {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [playing, muted, fullscreen, showControlsTemporarily, onClose]);
+  }, [playing, muted, fullscreen, showControlsTemporarily, onClose, showEpisodes]);
+
+  // Report progress every 10s and on pause
+  useEffect(() => {
+    if (!onProgress) return;
+    const vid = videoRef.current;
+    if (!vid) return;
+    const report = () => {
+      if (vid.currentTime > 0 && vid.duration > 0) {
+        onProgress({ currentTime: vid.currentTime, duration: vid.duration });
+      }
+    };
+    const handlePause = () => report();
+    if (playing) {
+      progressReportTimer.current = setInterval(report, 10000);
+    }
+    vid.addEventListener('pause', handlePause);
+    return () => {
+      clearInterval(progressReportTimer.current);
+      vid.removeEventListener('pause', handlePause);
+    };
+  }, [playing, onProgress]);
 
   // Fullscreen change listener
   useEffect(() => {
@@ -90,21 +114,24 @@ function NetflixPlayer({ src, title, onClose }) {
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
 
+  // Set initial season
+  useEffect(() => {
+    if (episodes?.seasons?.length > 0 && !selectedSeason) {
+      setSelectedSeason(episodes.currentSeason || episodes.seasons[0].season_number);
+    }
+  }, [episodes, selectedSeason]);
+
   const togglePlay = () => {
     const vid = videoRef.current;
     if (!vid) return;
-    if (vid.paused) {
-      vid.play();
-    } else {
-      vid.pause();
-    }
+    if (vid.paused) vid.play();
+    else vid.pause();
   };
 
   const skip = (seconds) => {
     const vid = videoRef.current;
     if (!vid) return;
     vid.currentTime = Math.min(Math.max(vid.currentTime + seconds, 0), vid.duration);
-    flashCenter(seconds > 0 ? 'forward' : 'backward');
   };
 
   const toggleMute = () => {
@@ -112,87 +139,52 @@ function NetflixPlayer({ src, title, onClose }) {
     if (!vid) return;
     vid.muted = !vid.muted;
     setMuted(vid.muted);
+    if (!vid.muted) {
+      setVolume(vid.volume || 1);
+    }
   };
 
   const toggleFullscreen = () => {
     const el = playerRef.current;
     if (!el) return;
-    if (!document.fullscreenElement) {
-      el.requestFullscreen();
-    } else {
-      document.exitFullscreen();
-    }
-  };
-
-  const flashCenter = (type) => {
-    setShowCenterIcon(type);
-    setTimeout(() => setShowCenterIcon(null), 600);
+    if (!document.fullscreenElement) el.requestFullscreen();
+    else document.exitFullscreen();
   };
 
   const handleTimeUpdate = () => {
     const vid = videoRef.current;
-    if (!vid || dragging) return;
+    if (!vid) return;
     setCurrentTime(vid.currentTime);
     if (vid.buffered.length > 0) {
       setBuffered(vid.buffered.end(vid.buffered.length - 1));
     }
   };
 
-  const handleProgressClick = (e) => {
+  const handleSeek = (pct) => {
     const vid = videoRef.current;
-    const bar = progressRef.current;
-    if (!vid || !bar) return;
-    const rect = bar.getBoundingClientRect();
-    const pct = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
-    vid.currentTime = pct * vid.duration;
-    setCurrentTime(vid.currentTime);
-  };
-
-  const handleProgressDrag = (e) => {
-    if (!dragging) return;
-    const vid = videoRef.current;
-    const bar = progressRef.current;
-    if (!vid || !bar) return;
-    const rect = bar.getBoundingClientRect();
-    const pct = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
-    setCurrentTime(pct * vid.duration);
-  };
-
-  const handleDragEnd = (e) => {
-    if (!dragging) return;
-    setDragging(false);
-    const vid = videoRef.current;
-    const bar = progressRef.current;
-    if (!vid || !bar) return;
-    const rect = bar.getBoundingClientRect();
-    const pct = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
-    vid.currentTime = pct * vid.duration;
-  };
-
-  useEffect(() => {
-    if (dragging) {
-      window.addEventListener('mousemove', handleProgressDrag);
-      window.addEventListener('mouseup', handleDragEnd);
+    if (!vid || !vid.duration) return;
+    const time = (pct / 100) * vid.duration;
+    if (isFinite(time)) {
+      vid.currentTime = time;
+      setCurrentTime(time);
     }
-    return () => {
-      window.removeEventListener('mousemove', handleProgressDrag);
-      window.removeEventListener('mouseup', handleDragEnd);
-    };
-  }, [dragging]);
+  };
 
-  const handleVolumeChange = (e) => {
-    const val = parseFloat(e.target.value);
+  const handleVolumeChange = (pct) => {
     const vid = videoRef.current;
     if (!vid) return;
+    const val = pct / 100;
     vid.volume = val;
     setVolume(val);
-    if (val === 0) {
-      vid.muted = true;
-      setMuted(true);
-    } else if (muted) {
-      vid.muted = false;
-      setMuted(false);
-    }
+    vid.muted = val === 0;
+    setMuted(val === 0);
+  };
+
+  const setSpeed = (speed) => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    vid.playbackRate = speed;
+    setPlaybackSpeed(speed);
   };
 
   const formatTime = (s) => {
@@ -207,13 +199,16 @@ function NetflixPlayer({ src, title, onClose }) {
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
   const bufferedPct = duration > 0 ? (buffered / duration) * 100 : 0;
 
+  const currentSeasonData = episodes?.seasons?.find((s) => s.season_number === selectedSeason);
+
   return (
     <div
       ref={playerRef}
-      className={`nfx-player ${showControls ? 'show-controls' : ''}`}
+      className="vp-player"
       onMouseMove={showControlsTemporarily}
       onClick={(e) => {
-        if (e.target === e.currentTarget || e.target.closest('.nfx-video-area')) {
+        if (showEpisodes) return;
+        if (e.target === e.currentTarget || e.target.closest('.vp-video-area')) {
           togglePlay();
           showControlsTemporarily();
         }
@@ -222,114 +217,253 @@ function NetflixPlayer({ src, title, onClose }) {
       <video
         ref={videoRef}
         src={src}
-        className="nfx-video"
+        className="vp-video"
         autoPlay
         preload="auto"
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onTimeUpdate={handleTimeUpdate}
         onProgress={handleTimeUpdate}
-        onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
+        onLoadedMetadata={() => {
+          const vid = videoRef.current;
+          if (vid) {
+            setDuration(vid.duration || 0);
+            if (startTime && startTime > 0 && startTime < vid.duration) {
+              vid.currentTime = startTime;
+            }
+          }
+        }}
         onWaiting={() => setBuffering(true)}
         onPlaying={() => setBuffering(false)}
         onCanPlay={() => setBuffering(false)}
       />
 
-      <div className="nfx-video-area" />
+      <div className="vp-video-area" />
 
       {/* Buffering spinner */}
       {buffering && (
-        <div className="nfx-buffering">
-          <div className="nfx-buffering-spinner" />
-        </div>
-      )}
-
-      {/* Buffer-ahead indicator when paused */}
-      {!playing && !buffering && buffered > currentTime && duration > 0 && (
-        <div className="nfx-buffer-status">
-          Buffered {formatTime(buffered - currentTime)} ahead
-        </div>
-      )}
-
-      {/* Center flash icon */}
-      {showCenterIcon && (
-        <div className="nfx-center-flash">
-          {showCenterIcon === 'forward' ? <FaRedo /> : <FaUndo />}
-          <span>{showCenterIcon === 'forward' ? '+10s' : '-10s'}</span>
+        <div className="vp-buffering">
+          <div className="vp-buffering-spinner" />
         </div>
       )}
 
       {/* Large center play button when paused */}
-      {!playing && !buffering && (
-        <div className="nfx-center-play" onClick={togglePlay}>
-          <FaPlay />
-        </div>
-      )}
+      <AnimatePresence>
+        {!playing && !buffering && (
+          <motion.div
+            className="vp-center-play"
+            onClick={togglePlay}
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.5, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Play size={48} fill="white" />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Top bar */}
-      <div className="nfx-top-bar">
-        <span className="nfx-title">{title}</span>
-        <button className="nfx-btn nfx-close-btn" onClick={onClose}>
-          <FaTimes />
-        </button>
-      </div>
-
-      {/* Bottom controls */}
-      <div className="nfx-bottom-bar">
-        {/* Progress bar */}
-        <div
-          ref={progressRef}
-          className="nfx-progress-bar"
-          onClick={handleProgressClick}
-          onMouseDown={(e) => {
-            setDragging(true);
-            handleProgressClick(e);
-          }}
-        >
-          <div className="nfx-progress-buffered" style={{ width: `${bufferedPct}%` }} />
-          <div className="nfx-progress-played" style={{ width: `${progressPct}%` }} />
-          <div className="nfx-progress-thumb" style={{ left: `${progressPct}%` }} />
-        </div>
-
-        <div className="nfx-controls-row">
-          <div className="nfx-controls-left">
-            <button className="nfx-btn" onClick={togglePlay}>
-              {playing ? <FaPause /> : <FaPlay />}
+      <AnimatePresence>
+        {showControls && (
+          <motion.div
+            className="vp-top-bar"
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -20, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <span className="vp-title">{title}</span>
+            <button className="vp-icon-btn" onClick={onClose}>
+              <X size={22} />
             </button>
-            <button className="nfx-btn" onClick={() => skip(-10)}>
-              <FaUndo />
-            </button>
-            <button className="nfx-btn" onClick={() => skip(10)}>
-              <FaRedo />
-            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <div className="nfx-volume-group">
-              <button className="nfx-btn" onClick={toggleMute}>
-                {muted || volume === 0 ? <FaVolumeMute /> : <FaVolumeUp />}
-              </button>
-              <input
-                type="range"
-                className="nfx-volume-slider"
-                min="0"
-                max="1"
-                step="0.05"
-                value={muted ? 0 : volume}
-                onChange={handleVolumeChange}
-              />
+      {/* Bottom controls — frosted glass panel */}
+      <AnimatePresence>
+        {showControls && (
+          <motion.div
+            className="vp-bottom-panel"
+            initial={{ y: 20, opacity: 0, filter: 'blur(10px)' }}
+            animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
+            exit={{ y: 20, opacity: 0, filter: 'blur(10px)' }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+          >
+            {/* Progress bar */}
+            <div className="vp-progress-row">
+              <span className="vp-time">{formatTime(currentTime)}</span>
+              <div
+                className="vp-progress-bar"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const pct = ((e.clientX - rect.left) / rect.width) * 100;
+                  handleSeek(Math.min(Math.max(pct, 0), 100));
+                }}
+              >
+                <div className="vp-progress-buffered" style={{ width: `${bufferedPct}%` }} />
+                <motion.div
+                  className="vp-progress-played"
+                  style={{ width: `${progressPct}%` }}
+                  animate={{ width: `${progressPct}%` }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                />
+                <div className="vp-progress-thumb" style={{ left: `${progressPct}%` }} />
+              </div>
+              <span className="vp-time">{formatTime(duration)}</span>
             </div>
 
-            <span className="nfx-time">
-              {formatTime(currentTime)} / {formatTime(duration)}
-            </span>
-          </div>
+            {/* Controls row */}
+            <div className="vp-controls-row">
+              <div className="vp-controls-left">
+                <button className="vp-icon-btn" onClick={togglePlay}>
+                  {playing ? <Pause size={20} /> : <Play size={20} fill="white" />}
+                </button>
+                <button className="vp-icon-btn" onClick={() => skip(-10)}>
+                  <SkipBack size={18} />
+                </button>
+                <button className="vp-icon-btn" onClick={() => skip(10)}>
+                  <SkipForward size={18} />
+                </button>
 
-          <div className="nfx-controls-right">
-            <button className="nfx-btn" onClick={toggleFullscreen}>
-              {fullscreen ? <FaCompress /> : <FaExpand />}
-            </button>
-          </div>
-        </div>
-      </div>
+                <div className="vp-volume-group">
+                  <button className="vp-icon-btn" onClick={toggleMute}>
+                    {muted || volume === 0 ? <VolumeX size={18} /> :
+                     volume > 0.5 ? <Volume2 size={18} /> : <Volume1 size={18} />}
+                  </button>
+                  <div
+                    className="vp-volume-slider"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+                      handleVolumeChange(Math.min(Math.max(pct, 0), 100));
+                    }}
+                  >
+                    <motion.div
+                      className="vp-volume-fill"
+                      style={{ width: `${(muted ? 0 : volume) * 100}%` }}
+                      animate={{ width: `${(muted ? 0 : volume) * 100}%` }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="vp-controls-right">
+                {/* Speed buttons */}
+                <div className="vp-speed-group">
+                  {[0.5, 1, 1.5, 2].map((speed) => (
+                    <button
+                      key={speed}
+                      className={`vp-speed-btn ${playbackSpeed === speed ? 'active' : ''}`}
+                      onClick={() => setSpeed(speed)}
+                    >
+                      {speed}x
+                    </button>
+                  ))}
+                </div>
+
+                {/* Episode list button (TV shows only) */}
+                {episodes && (
+                  <button
+                    className={`vp-icon-btn ${showEpisodes ? 'active' : ''}`}
+                    onClick={() => setShowEpisodes(!showEpisodes)}
+                    title="Episodes"
+                  >
+                    <List size={20} />
+                  </button>
+                )}
+
+                <button className="vp-icon-btn" onClick={toggleFullscreen}>
+                  {fullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Episode list sidebar */}
+      <AnimatePresence>
+        {showEpisodes && episodes && (
+          <motion.div
+            className="vp-episodes-panel"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          >
+            <div className="vp-episodes-header">
+              <h3>Episodes</h3>
+              <button className="vp-icon-btn" onClick={() => setShowEpisodes(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Season selector */}
+            {episodes.seasons?.length > 1 && (
+              <div className="vp-season-select">
+                <select
+                  value={selectedSeason || ''}
+                  onChange={(e) => setSelectedSeason(Number(e.target.value))}
+                >
+                  {episodes.seasons.map((s) => (
+                    <option key={s.season_number} value={s.season_number}>
+                      Season {s.season_number}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="vp-select-icon" />
+              </div>
+            )}
+
+            {/* Episode list */}
+            <div className="vp-episodes-list">
+              {currentSeasonData?.episodes?.map((ep) => {
+                const isCurrent =
+                  ep.season_number === episodes.currentSeason &&
+                  ep.episode_number === episodes.currentEpisode;
+                const isOnDrive = episodes.localEpisodes?.has(ep.episode_number);
+
+                return (
+                  <button
+                    key={ep.id}
+                    className={`vp-episode-item ${isCurrent ? 'current' : ''}`}
+                    onClick={() => {
+                      if (!isCurrent && ep.onPlay) {
+                        ep.onPlay();
+                      }
+                    }}
+                    disabled={isCurrent}
+                  >
+                    <div className="vp-episode-thumb">
+                      {ep.still_path ? (
+                        <img src={ep.still_path} alt={ep.name} />
+                      ) : (
+                        <div className="vp-episode-no-thumb">E{ep.episode_number}</div>
+                      )}
+                      {isCurrent && (
+                        <div className="vp-now-playing-badge">Now Playing</div>
+                      )}
+                    </div>
+                    <div className="vp-episode-info">
+                      <span className="vp-episode-num">E{ep.episode_number}</span>
+                      <span className="vp-episode-name">{ep.name}</span>
+                      {ep.runtime > 0 && (
+                        <span className="vp-episode-runtime">{ep.runtime}m</span>
+                      )}
+                    </div>
+                    {isOnDrive && !isCurrent && (
+                      <Play size={14} className="vp-episode-play-icon" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

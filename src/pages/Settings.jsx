@@ -1,13 +1,22 @@
 import { useState, useEffect } from 'react';
-import { FaServer, FaCheck, FaSpinner, FaTimes, FaSync } from 'react-icons/fa';
+import { FaServer, FaCheck, FaSpinner, FaTimes, FaSync, FaHdd, FaFolder } from 'react-icons/fa';
 import { getMediaUrl, setMediaUrl } from '../services/media';
+import { useUser } from '../contexts/UserContext';
 import './Settings.css';
 
 function Settings() {
+  const { currentUser } = useUser();
   const [url, setUrl] = useState('');
-  const [status, setStatus] = useState(null); // null | 'testing' | 'online' | 'offline'
+  const [status, setStatus] = useState(null);
   const [movieCount, setMovieCount] = useState(0);
   const [saved, setSaved] = useState(false);
+
+  // Drive config (Fiifi only)
+  const isFiifi = currentUser?.username?.toLowerCase() === 'fiifi';
+  const [moviesDir, setMoviesDir] = useState('');
+  const [tvDir, setTvDir] = useState('');
+  const [pathStatus, setPathStatus] = useState(null);
+  const [pathSaved, setPathSaved] = useState(false);
 
   useEffect(() => {
     setUrl(getMediaUrl());
@@ -16,6 +25,23 @@ function Settings() {
   useEffect(() => {
     if (url) testConnection(url);
   }, []);
+
+  // Load current media paths
+  useEffect(() => {
+    if (!isFiifi) return;
+    const loadPaths = async () => {
+      try {
+        const res = await fetch(`${getMediaUrl()}/api/config/media-paths`);
+        if (res.ok) {
+          const data = await res.json();
+          setMoviesDir(data.moviesDir);
+          setTvDir(data.tvDir);
+          setPathStatus(data);
+        }
+      } catch { /* server offline */ }
+    };
+    loadPaths();
+  }, [isFiifi]);
 
   const testConnection = async (testUrl) => {
     setStatus('testing');
@@ -40,6 +66,22 @@ function Settings() {
     setSaved(true);
     testConnection(cleaned);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleSavePaths = async () => {
+    try {
+      const res = await fetch(`${getMediaUrl()}/api/config/media-paths`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ moviesDir, tvDir, userId: currentUser.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPathStatus(data);
+        setPathSaved(true);
+        setTimeout(() => setPathSaved(false), 2000);
+      }
+    } catch { /* server offline */ }
   };
 
   return (
@@ -85,6 +127,45 @@ function Settings() {
             </ol>
           </div>
         </div>
+
+        {isFiifi && (
+          <div className="settings-card drive-config">
+            <h2 className="settings-card-title"><FaHdd /> Drive Configuration</h2>
+            <p className="settings-card-desc">Set the folders where your movies and TV shows are stored.</p>
+
+            <label className="settings-label"><FaFolder /> Movies Folder</label>
+            <input
+              type="text"
+              className="settings-input"
+              value={moviesDir}
+              onChange={(e) => setMoviesDir(e.target.value)}
+              placeholder="/Volumes/MyDrive/Movies"
+            />
+            {pathStatus && (
+              <span className={`path-status ${pathStatus.moviesDirExists ? 'found' : 'missing'}`}>
+                {pathStatus.moviesDirExists ? <><FaCheck /> Folder found</> : <><FaTimes /> Folder not found</>}
+              </span>
+            )}
+
+            <label className="settings-label"><FaFolder /> TV Shows Folder</label>
+            <input
+              type="text"
+              className="settings-input"
+              value={tvDir}
+              onChange={(e) => setTvDir(e.target.value)}
+              placeholder="/Volumes/MyDrive/Tv Shows"
+            />
+            {pathStatus && (
+              <span className={`path-status ${pathStatus.tvDirExists ? 'found' : 'missing'}`}>
+                {pathStatus.tvDirExists ? <><FaCheck /> Folder found</> : <><FaTimes /> Folder not found</>}
+              </span>
+            )}
+
+            <button className="settings-btn save drive-save" onClick={handleSavePaths}>
+              {pathSaved ? <><FaCheck /> Saved</> : 'Save Paths'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

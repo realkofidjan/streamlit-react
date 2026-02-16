@@ -25,3 +25,7 @@ dist-ssr
 .vercel
 .env
 .env.*
+
+# Server data (user PINs, config)
+server/data/
+server/downie-landing/

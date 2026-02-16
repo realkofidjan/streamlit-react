@@ -79,3 +79,70 @@ main {
     transform: rotate(360deg);
   }
 }
+
+/* Watchlist button (shared) */
+.watchlist-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 1rem;
+}
+
+.watchlist-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.watchlist-btn.active {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: rgba(229, 9, 20, 0.1);
+}
+
+/* Breadcrumb navigation (shared) */
+.episode-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.episode-breadcrumbs a {
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.episode-breadcrumbs a:hover {
+  color: var(--primary);
+}
+
+.episode-breadcrumbs span {
+  color: var(--text-muted);
+}
+
+.breadcrumb-sep {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+/* Detail title row with right-aligned download button */
+.detail-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}

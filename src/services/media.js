@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const DEFAULT_URL = import.meta.env.VITE_MEDIA_SERVER_URL || 'http://localhost:4000';
+const DEFAULT_URL = import.meta.env.VITE_MEDIA_SERVER_URL || `http://${window.location.hostname}:4000`;
 
 export function getMediaUrl() {
   return localStorage.getItem('mediaServerUrl') || DEFAULT_URL;
@@ -33,3 +33,5 @@ export const getLocalTvEpisodes = (showName, seasonName) =>
 
 export const getLocalTvStreamUrl = (showName, seasonName, filename) =>
   `${getMediaUrl()}/api/tv/${encodeURIComponent(showName)}/${encodeURIComponent(seasonName)}/stream/${encodeURIComponent(filename)}`;
+
+export const getLibrary = () => getApi().get('/api/library');

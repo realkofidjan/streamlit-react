@@ -1,13 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { FaStar, FaClock, FaCalendar } from 'react-icons/fa';
-import { getTvShowDetails, getImageUrl } from '../services/tmdb';
+import { FaStar, FaClock, FaCalendar, FaHdd, FaBell, FaChevronRight, FaBookmark, FaRegBookmark } from 'react-icons/fa';
+import { getTvShowDetails, getTvSeasonDetails, getImageUrl } from '../services/tmdb';
+import { searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes } from '../services/media';
+import { useUser } from '../contexts/UserContext';
 import './TvShowDetail.css';
 
 function TvShowDetail() {
   const { id } = useParams();
+  const { currentUser, addToWatchlist, removeFromWatchlist } = useUser();
   const [show, setShow] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [localShow, setLocalShow] = useState(null);
+  const [localEpisodeCount, setLocalEpisodeCount] = useState(0);
+  const [newEpisodes, setNewEpisodes] = useState(0);
+  const [upcomingEpisodes, setUpcomingEpisodes] = useState(0);
+  const [nextAirDate, setNextAirDate] = useState(null);
 
   useEffect(() => {
     const fetchShow = async () => {
@@ -22,6 +30,78 @@ function TvShowDetail() {
     };
     fetchShow();
   }, [id]);
+
+  // Search for local copy and count episodes vs aired TMDB episodes
+  useEffect(() => {
+    if (!show) return;
+    const findLocal = async () => {
+      try {
+        const res = await searchLocalTvShows(show.name);
+        if (res.data.length === 0) return;
+        setLocalShow(res.data[0]);
+
+        // Gather episodes from ALL matching folders (e.g. "Danny Phantom" + "Danny Phantom (2004)")
+        // Use season+episode from FILENAME (not folder) since files can be in mismatched folders
+        const localEpKeys = new Set();
+        const localSeasonNums = new Set();
+        let totalLocal = 0;
+        for (const match of res.data) {
+          const seasonsRes = await getLocalTvSeasons(match.name);
+          for (const season of seasonsRes.data) {
+            const epsRes = await getLocalTvEpisodes(match.name, season.name);
+            totalLocal += epsRes.data.length;
+            for (const ep of epsRes.data) {
+              // Extract season and episode from filename like "s01.e03" or "S01E03"
+              const sm = ep.filename.match(/[Ss](\d+)/);
+              const em = ep.filename.match(/[Ee](\d+)/);
+              if (sm && em) {
+                const sNum = parseInt(sm[1]);
+                const eNum = parseInt(em[1]);
+                localSeasonNums.add(sNum);
+                localEpKeys.add(`${sNum}-${eNum}`);
+              }
+            }
+          }
+        }
+        setLocalEpisodeCount(totalLocal);
+
+        // Only check seasons the user actually has on their drive for missing episodes
+        // Check all seasons for upcoming episodes
+        const today = new Date().toISOString().split('T')[0];
+        let airedNotLocal = 0;
+        let upcomingCount = 0;
+        let nextUpcomingDate = null;
+
+        const tmdbSeasons = (show.seasons || []).filter((s) => s.season_number > 0);
+        for (const s of tmdbSeasons) {
+          try {
+            const seasonRes = await getTvSeasonDetails(id, s.season_number);
+            const episodes = seasonRes.data.episodes || [];
+            for (const ep of episodes) {
+              const key = `${s.season_number}-${ep.episode_number}`;
+              // Only count as "new" if it's from a season the user has locally
+              if (localSeasonNums.has(s.season_number) && ep.air_date && ep.air_date <= today && !localEpKeys.has(key)) {
+                airedNotLocal++;
+              }
+              if (ep.air_date && ep.air_date > today) {
+                upcomingCount++;
+                if (!nextUpcomingDate || ep.air_date < nextUpcomingDate) {
+                  nextUpcomingDate = ep.air_date;
+                }
+              }
+            }
+          } catch { /* skip season */ }
+        }
+
+        if (airedNotLocal > 0) setNewEpisodes(airedNotLocal);
+        setUpcomingEpisodes(upcomingCount);
+        setNextAirDate(nextUpcomingDate);
+      } catch {
+        // Media server not running
+      }
+    };
+    findLocal();
+  }, [show, id]);
 
   if (loading) {
     return (
@@ -47,6 +127,15 @@ function TvShowDetail() {
         style={{ backgroundImage: backdropUrl ? `url(${backdropUrl})` : 'none' }}
       >
         <div className="detail-backdrop-overlay" />
+        <div className="detail-breadcrumbs container">
+          <div className="episode-breadcrumbs">
+            <Link to="/">Home</Link>
+            <FaChevronRight className="breadcrumb-sep" />
+            <Link to="/tv-shows">TV Shows</Link>
+            <FaChevronRight className="breadcrumb-sep" />
+            <span>{show.name}</span>
+          </div>
+        </div>
       </div>
 
       <div className="detail-content">
@@ -76,6 +165,40 @@ function TvShowDetail() {
                   {show.status}
                 </span>
               </div>
+              {localShow ? (
+                <div className="local-badge">
+                  <FaHdd /> On your drive ({localEpisodeCount} episodes)
+                </div>
+              ) : (
+                <div className="download-badge">
+                  Not on your drive
+                </div>
+              )}
+              {newEpisodes > 0 && (
+                <div className="new-episodes-banner">
+                  <FaBell /> {newEpisodes} new episode{newEpisodes !== 1 ? 's' : ''} available to download
+                </div>
+              )}
+              {upcomingEpisodes > 0 && nextAirDate && (
+                <div className="upcoming-episodes-banner">
+                  <FaCalendar /> {upcomingEpisodes} upcoming episode{upcomingEpisodes !== 1 ? 's' : ''} — next airs {nextAirDate}
+                </div>
+              )}
+              {(() => {
+                const inWatchlist = currentUser?.watchlist?.shows?.[id];
+                return (
+                  <button
+                    className={`watchlist-btn${inWatchlist ? ' active' : ''}`}
+                    onClick={() => inWatchlist
+                      ? removeFromWatchlist('show', id)
+                      : addToWatchlist('show', id, show.name, show.poster_path)
+                    }
+                  >
+                    {inWatchlist ? <FaBookmark /> : <FaRegBookmark />}
+                    {inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
+                  </button>
+                );
+              })()}
               <div className="detail-genres">
                 {show.genres?.map((g) => (
                   <span key={g.id} className="genre-tag">{g.name}</span>

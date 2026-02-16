@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import { FaStar } from 'react-icons/fa';
+import { FaStar, FaHdd, FaDownload } from 'react-icons/fa';
 import { getImageUrl } from '../services/tmdb';
 import './MediaCard.css';
 
-function MediaCard({ item, type }) {
+function MediaCard({ item, type, badge }) {
   const title = type === 'movie' ? item.title : item.name;
   const date = type === 'movie' ? item.release_date : item.first_air_date;
   const link = type === 'movie' ? `/movie/${item.id}` : `/tv/${item.id}`;
@@ -24,6 +24,18 @@ function MediaCard({ item, type }) {
             <span>{item.vote_average?.toFixed(1)}</span>
           </div>
         </div>
+        {(badge === 'local' || (badge && typeof badge === 'object')) && (
+          <div className="media-card-drive-icon"><FaHdd /></div>
+        )}
+        {badge === 'download' && (
+          <div className="media-card-drive-icon download"><FaDownload /></div>
+        )}
+        {badge && typeof badge === 'object' && badge.type === 'new-episodes' && (
+          <div className="media-card-badge-bottom new-aired">New Aired</div>
+        )}
+        {badge && typeof badge === 'object' && badge.type === 'coming-soon' && (
+          <div className="media-card-badge-bottom airing-soon">Airing Soon</div>
+        )}
       </div>
       <div className="media-card-info">
         <h3 className="media-card-title">{title}</h3>

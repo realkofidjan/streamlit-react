@@ -1,0 +1,63 @@
+.dl-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--primary);
+  color: white;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.dl-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.dl-btn:disabled {
+  cursor: default;
+}
+
+.dl-btn.downloading {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.dl-progress-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--primary);
+  transition: width 0.3s;
+}
+
+.dl-progress-text {
+  font-variant-numeric: tabular-nums;
+}
+
+.dl-btn.completed,
+.dl-btn.sent {
+  background: rgba(46, 204, 113, 0.15);
+  color: #2ecc71;
+}
+
+.dl-btn.error {
+  background: rgba(231, 76, 60, 0.15);
+  color: #e74c3c;
+}
+
+.dl-spin {
+  animation: dl-spin 1s linear infinite;
+}
+
+@keyframes dl-spin {
+  to { transform: rotate(360deg); }
+}

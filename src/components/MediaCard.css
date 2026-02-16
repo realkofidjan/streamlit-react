@@ -74,6 +74,61 @@
   font-size: 0.7rem;
 }
 
+.media-card-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  z-index: 2;
+}
+
+.media-card-drive-icon {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  color: #2ecc71;
+  font-size: 0.85rem;
+  z-index: 2;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+}
+
+.media-card-drive-icon.download {
+  color: var(--primary);
+}
+
+.media-card-badge.episodes {
+  background: rgba(52, 152, 219, 0.9);
+  color: white;
+}
+
+/* Bottom-center badge for TV show status */
+.media-card-badge-bottom {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: white;
+  z-index: 3;
+  white-space: nowrap;
+}
+
+.media-card-badge-bottom.new-aired {
+  background: rgba(52, 152, 219, 0.9);
+}
+
+.media-card-badge-bottom.airing-soon {
+  background: rgba(255, 165, 0, 0.9);
+}
+
 .media-card-info {
   padding: 0.75rem;
 }

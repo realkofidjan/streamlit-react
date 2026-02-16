@@ -6,20 +6,6 @@
   margin-bottom: 2rem;
 }
 
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  margin-bottom: 1.5rem;
-  transition: var(--transition);
-}
-
-.back-link:hover {
-  color: var(--primary);
-}
-
 .season-header-content {
   display: flex;
   gap: 2rem;
@@ -57,15 +43,56 @@
 
 .episode-card {
   display: flex;
-  gap: 1.25rem;
+  gap: 0;
   background: var(--bg-card);
   border-radius: 8px;
   overflow: hidden;
   transition: var(--transition);
+  align-items: center;
 }
 
 .episode-card:hover {
   background: #1a1a2e;
+}
+
+.episode-card-link {
+  display: flex;
+  gap: 1.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.episode-action {
+  padding: 0 1rem;
+  flex-shrink: 0;
+}
+
+.episode-play-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  background: rgba(46, 204, 113, 0.15);
+  color: #2ecc71;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.episode-play-btn:hover {
+  background: rgba(46, 204, 113, 0.3);
+}
+
+.episode-upcoming {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
 
 .episode-still {
