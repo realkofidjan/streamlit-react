@@ -128,18 +128,6 @@ function ProfileSelect() {
     );
   }
 
-  if (!isServerConfigured()) {
-    return (
-      <div className="profile-page">
-        <h1 className="profile-heading">StreamIt</h1>
-        <p className="profile-setup-msg">
-          No media server configured. Set your server URL in Settings to get started.
-        </p>
-        <Link to="/settings" className="profile-setup-btn"><FaCog /> Go to Settings</Link>
-      </div>
-    );
-  }
-
   return (
     <div className="profile-page">
       <div className="profile-top-bar">
@@ -167,6 +155,14 @@ function ProfileSelect() {
           <span className="profile-name">Add Profile</span>
         </button>
       </div>
+      {!isServerConfigured() && (
+        <div className="profile-setup-banner">
+          <p className="profile-setup-msg">
+            No media server configured. Set your server URL in Settings to get started.
+          </p>
+          <Link to="/settings" className="profile-setup-btn"><FaCog /> Go to Settings</Link>
+        </div>
+      )}
     </div>
   );
 }
