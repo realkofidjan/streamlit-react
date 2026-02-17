@@ -1,4 +1,5 @@
 .profile-page {
+  position: relative;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -6,6 +7,35 @@
   justify-content: center;
   background: var(--bg-dark);
   padding: 2rem;
+}
+
+.profile-top-bar {
+  position: absolute;
+  top: 1.5rem;
+  left: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.profile-top-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: color 0.2s, background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-top-btn:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .profile-heading {

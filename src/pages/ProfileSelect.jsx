@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { FaPlus, FaUser, FaCog } from 'react-icons/fa';
+import { FaPlus, FaUser, FaCog, FaSyncAlt } from 'react-icons/fa';
 import { useUser } from '../contexts/UserContext';
 import { isServerConfigured } from '../services/media';
 import './ProfileSelect.css';
@@ -8,7 +8,7 @@ import './ProfileSelect.css';
 const AVATARS = ['#e50914', '#3498db', '#2ecc71', '#9b59b6', '#f39c12', '#1abc9c'];
 
 function ProfileSelect() {
-  const { users, createUser, login } = useUser();
+  const { users, createUser, login, fetchUsers } = useUser();
   const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [showPin, setShowPin] = useState(null);
@@ -142,6 +142,14 @@ function ProfileSelect() {
 
   return (
     <div className="profile-page">
+      <div className="profile-top-bar">
+        <button className="profile-top-btn" onClick={fetchUsers} title="Refresh">
+          <FaSyncAlt />
+        </button>
+        <button className="profile-top-btn" onClick={() => navigate('/settings')} title="Settings">
+          <FaCog />
+        </button>
+      </div>
       <h1 className="profile-heading">Who's watching?</h1>
       <div className="profile-grid">
         {users.map((u) => (
