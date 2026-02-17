@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -636,6 +637,80 @@ app.get('/api/download/status', (req, res) => {
     current: currentDownload ? { type: currentDownload.type, targetName: currentDownload.targetName } : null,
     queued: downloadQueue.map((d) => ({ type: d.type, targetName: d.targetName })),
   });
+});
+
+// ========== SUBTITLES (OpenSubtitles API proxy) ==========
+
+const OPENSUBTITLES_API_KEY = process.env.OPENSUBTITLES_API_KEY || '';
+const OPENSUBTITLES_BASE = 'https://api.opensubtitles.com/api/v1';
+
+app.get('/api/subtitles/search', async (req, res) => {
+  if (!OPENSUBTITLES_API_KEY) return res.status(503).json({ error: 'OPENSUBTITLES_API_KEY not configured' });
+  const { tmdb_id, type, season, episode, languages } = req.query;
+  if (!tmdb_id) return res.status(400).json({ error: 'tmdb_id required' });
+
+  try {
+    const params = new URLSearchParams({ tmdb_id, languages: languages || 'en' });
+    if (type === 'episode' && season && episode) {
+      params.set('season_number', season);
+      params.set('episode_number', episode);
+    }
+    const response = await fetch(`${OPENSUBTITLES_BASE}/subtitles?${params}`, {
+      headers: {
+        'Api-Key': OPENSUBTITLES_API_KEY,
+        'Content-Type': 'application/json',
+        'User-Agent': 'MediaPlayerApp v1.0',
+      },
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error('Subtitle search error:', err.message);
+    res.status(500).json({ error: 'Subtitle search failed' });
+  }
+});
+
+function srtToVtt(srt) {
+  let vtt = 'WEBVTT\n\n';
+  vtt += srt
+    .replace(/\r\n/g, '\n')
+    .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
+    .replace(/^\d+\n/gm, '');
+  return vtt;
+}
+
+app.get('/api/subtitles/download', async (req, res) => {
+  if (!OPENSUBTITLES_API_KEY) return res.status(503).json({ error: 'OPENSUBTITLES_API_KEY not configured' });
+  const { file_id } = req.query;
+  if (!file_id) return res.status(400).json({ error: 'file_id required' });
+
+  try {
+    // Step 1: Request download link
+    const dlRes = await fetch(`${OPENSUBTITLES_BASE}/download`, {
+      method: 'POST',
+      headers: {
+        'Api-Key': OPENSUBTITLES_API_KEY,
+        'Content-Type': 'application/json',
+        'User-Agent': 'MediaPlayerApp v1.0',
+      },
+      body: JSON.stringify({ file_id: parseInt(file_id) }),
+    });
+    const dlData = await dlRes.json();
+    if (!dlData.link) return res.status(404).json({ error: 'No download link returned' });
+
+    // Step 2: Fetch the SRT content
+    const srtRes = await fetch(dlData.link);
+    const srtText = await srtRes.text();
+
+    // Step 3: Convert to VTT and return
+    const vtt = srtToVtt(srtText);
+    res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.send(vtt);
+  } catch (err) {
+    console.error('Subtitle download error:', err.message);
+    res.status(500).json({ error: 'Subtitle download failed' });
+  }
 });
 
 // ========== START ==========

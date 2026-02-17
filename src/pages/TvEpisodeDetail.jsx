@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { FaStar, FaCalendar, FaArrowLeft, FaPlay, FaHdd, FaChevronRight } from 'react-icons/fa';
+import { FaStar, FaCalendar, FaArrowLeft, FaPlay, FaHdd, FaChevronRight, FaCheckCircle, FaEnvelope } from 'react-icons/fa';
 import { getTvEpisodeDetails, getTvShowDetails, getTvSeasonDetails, getImageUrl } from '../services/tmdb';
 import { searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes, getLocalTvStreamUrl } from '../services/media';
 import { useUser } from '../contexts/UserContext';
 import NetflixPlayer from '../components/NetflixPlayer';
 import SaveOfflineButton from '../components/SaveOfflineButton';
 import { isVideoOffline } from '../services/offlineStorage';
+import { searchSubtitles, getSubtitleUrl } from '../services/subtitles';
 import './TvEpisodeDetail.css';
 
 function TvEpisodeDetail() {
@@ -15,7 +16,9 @@ function TvEpisodeDetail() {
   const navigate = useNavigate();
   const autoplay = searchParams.get('autoplay') === '1';
   const resumeTime = parseFloat(searchParams.get('t')) || 0;
-  const { updateWatchHistory } = useUser();
+  const { currentUser, updateWatchHistory, sendNotification } = useUser();
+  const isFiifi = currentUser?.username?.toLowerCase() === 'fiifi';
+  const [requestSent, setRequestSent] = useState(false);
   const [episode, setEpisode] = useState(null);
   const [show, setShow] = useState(null);
   const [seasonData, setSeasonData] = useState(null);
@@ -27,6 +30,7 @@ function TvEpisodeDetail() {
   const [localSeasonFolder, setLocalSeasonFolder] = useState(null);
   const [localEpisodeSet, setLocalEpisodeSet] = useState(new Set());
   const [nextEpLocal, setNextEpLocal] = useState(false);
+  const [subtitleUrl, setSubtitleUrl] = useState(null);
 
   const autoplayTriggered = useRef(false);
 
@@ -99,6 +103,21 @@ function TvEpisodeDetail() {
   }, [show, seasonNumber, episodeNumber]);
 
   const hasOfflineDownload = isVideoOffline(`episode-${id}-s${seasonNumber}e${episodeNumber}`);
+  const epKey = `${id}-s${seasonNumber}e${episodeNumber}`;
+  const watchEntry = currentUser?.watchHistory?.episodes?.[epKey];
+  const isWatched = watchEntry?.progress >= 0.96;
+
+  // Auto-fetch subtitles
+  useEffect(() => {
+    if (!localStreamUrl) return;
+    searchSubtitles(id, 'episode', seasonNumber, episodeNumber).then((results) => {
+      if (results.length > 0) {
+        const best = results[0];
+        const fileId = best.attributes?.files?.[0]?.file_id;
+        if (fileId) setSubtitleUrl(getSubtitleUrl(fileId));
+      }
+    });
+  }, [id, seasonNumber, episodeNumber, localStreamUrl]);
 
   // Auto-play from continue watching
   useEffect(() => {
@@ -218,6 +237,7 @@ function TvEpisodeDetail() {
                       : [],
                   })) || [],
               } : undefined}
+              subtitleUrl={subtitleUrl}
             />
           ) : (
             <div className="stream-overlay">
@@ -237,7 +257,10 @@ function TvEpisodeDetail() {
             <span className="episode-detail-badge">
               Season {seasonNumber} &middot; Episode {episodeNumber}
             </span>
-            <h1>{episode.name}</h1>
+            <h1>
+              {episode.name}
+              {isWatched && <span className="detail-watched-badge"><FaCheckCircle /> Watched</span>}
+            </h1>
             <div className="episode-detail-meta">
               {episode.vote_average > 0 && (
                 <span className="detail-rating">
@@ -254,18 +277,32 @@ function TvEpisodeDetail() {
               )}
             </div>
           </div>
-          {localStreamUrl && (
-            <SaveOfflineButton
-              cacheKey={`episode-${id}-s${seasonNumber}e${episodeNumber}`}
-              streamUrl={localStreamUrl}
-              metadata={{
-                title: `${show?.name || ''} S${seasonNumber}E${episodeNumber} - ${episode.name}`,
-                posterPath: show?.poster_path,
-                type: 'episode',
-                linkTo: `/tv/${id}/season/${seasonNumber}/episode/${episodeNumber}`,
-              }}
-            />
-          )}
+          <div className="episode-actions-row">
+            {localStreamUrl && (
+              <SaveOfflineButton
+                cacheKey={`episode-${id}-s${seasonNumber}e${episodeNumber}`}
+                streamUrl={localStreamUrl}
+                metadata={{
+                  title: `${show?.name || ''} S${seasonNumber}E${episodeNumber} - ${episode.name}`,
+                  posterPath: show?.poster_path,
+                  type: 'episode',
+                  linkTo: `/tv/${id}/season/${seasonNumber}/episode/${episodeNumber}`,
+                }}
+              />
+            )}
+            {currentUser && !isFiifi && !localStreamUrl && (
+              <button
+                className={`request-btn${requestSent ? ' sent' : ''}`}
+                disabled={requestSent}
+                onClick={async () => {
+                  await sendNotification(show?.name || episode.name, id, `S${seasonNumber}E${episodeNumber} request`);
+                  setRequestSent(true);
+                }}
+              >
+                {requestSent ? <><FaCheckCircle /> Requested</> : <><FaEnvelope /> Request This</>}
+              </button>
+            )}
+          </div>
 
           {episode.overview && (
             <div className="episode-detail-overview">

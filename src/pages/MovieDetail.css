@@ -18,12 +18,10 @@
 .detail-backdrop-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(10, 10, 10, 0.3) 0%,
-    rgba(10, 10, 10, 0.6) 60%,
-    rgba(10, 10, 10, 1) 100%
-  );
+  background: linear-gradient(to bottom,
+      rgba(10, 10, 10, 0.3) 0%,
+      rgba(10, 10, 10, 0.6) 60%,
+      rgba(10, 10, 10, 1) 100%);
 }
 
 .detail-breadcrumbs {
@@ -99,8 +97,13 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .video-player-wrapper {
@@ -456,4 +459,57 @@
   width: 100%;
   height: 100%;
   border: none;
+}
+
+/* Request button */
+.request-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #a855f7;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.request-btn:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.25);
+  border-color: #a855f7;
+}
+
+.request-btn.sent {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #22c55e;
+  cursor: default;
+}
+
+/* Watched badge on detail pages */
+.detail-watched-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  vertical-align: middle;
+  margin-left: 0.75rem;
+  padding: 0.2rem 0.65rem;
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* Actions stack layout */
+.detail-actions-stack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { FaStar, FaClock, FaCalendar, FaPlay, FaHdd, FaChevronRight, FaBookmark, FaRegBookmark } from 'react-icons/fa';
+import { FaStar, FaClock, FaCalendar, FaPlay, FaHdd, FaChevronRight, FaBookmark, FaRegBookmark, FaCheckCircle, FaEnvelope } from 'react-icons/fa';
 import { getMovieDetails, getImageUrl } from '../services/tmdb';
 import { searchLocalMovies, getLocalMovieStreamUrl } from '../services/media';
 import { useUser } from '../contexts/UserContext';
 import NetflixPlayer from '../components/NetflixPlayer';
 import SaveOfflineButton from '../components/SaveOfflineButton';
 import { isVideoOffline } from '../services/offlineStorage';
+import { searchSubtitles, getSubtitleUrl } from '../services/subtitles';
 import './MovieDetail.css';
 
 function MovieDetail() {
@@ -14,12 +15,15 @@ function MovieDetail() {
   const [searchParams] = useSearchParams();
   const autoplay = searchParams.get('autoplay') === '1';
   const resumeTime = parseFloat(searchParams.get('t')) || 0;
-  const { currentUser, updateWatchHistory, addToWatchlist, removeFromWatchlist } = useUser();
+  const { currentUser, updateWatchHistory, addToWatchlist, removeFromWatchlist, sendNotification } = useUser();
+  const isFiifi = currentUser?.username?.toLowerCase() === 'fiifi';
+  const [requestSent, setRequestSent] = useState(false);
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showPlayer, setShowPlayer] = useState(false);
   const [localFile, setLocalFile] = useState(null);
   const [localSearching, setLocalSearching] = useState(false);
+  const [subtitleUrl, setSubtitleUrl] = useState(null);
 
   const autoplayTriggered = useRef(false);
 
@@ -65,6 +69,20 @@ function MovieDetail() {
   }, [movie]);
 
   const hasOfflineDownload = isVideoOffline(`movie-${id}`);
+  const watchEntry = currentUser?.watchHistory?.movies?.[String(id)];
+  const isWatched = watchEntry?.progress >= 0.96;
+
+  // Auto-fetch subtitles
+  useEffect(() => {
+    if (!localFile) return;
+    searchSubtitles(id, 'movie').then((results) => {
+      if (results.length > 0) {
+        const best = results[0];
+        const fileId = best.attributes?.files?.[0]?.file_id;
+        if (fileId) setSubtitleUrl(getSubtitleUrl(fileId));
+      }
+    });
+  }, [id, localFile]);
 
   // Auto-play from continue watching
   useEffect(() => {
@@ -147,6 +165,7 @@ function MovieDetail() {
             onClose={() => setShowPlayer(false)}
             onProgress={handleProgress}
             startTime={resumeTime || undefined}
+            subtitleUrl={subtitleUrl}
           />
         ) : (
           <div className="stream-overlay">
@@ -172,7 +191,10 @@ function MovieDetail() {
               )}
             </div>
             <div className="detail-info">
-              <h1 className="detail-title">{movie.title}</h1>
+              <h1 className="detail-title">
+                {movie.title}
+                {isWatched && <span className="detail-watched-badge"><FaCheckCircle /> Watched</span>}
+              </h1>
               {movie.tagline && <p className="detail-tagline">{movie.tagline}</p>}
               <div className="detail-meta">
                 <span className="detail-rating">
@@ -228,6 +250,18 @@ function MovieDetail() {
                     </button>
                   );
                 })()}
+                {currentUser && !isFiifi && !localFile && !localSearching && (
+                  <button
+                    className={`request-btn${requestSent ? ' sent' : ''}`}
+                    disabled={requestSent}
+                    onClick={async () => {
+                      await sendNotification(movie.title, id, 'Movie request');
+                      setRequestSent(true);
+                    }}
+                  >
+                    {requestSent ? <><FaCheckCircle /> Requested</> : <><FaEnvelope /> Request This</>}
+                  </button>
+                )}
               </div>
               <div className="detail-genres">
                 {movie.genres?.map((g) => (

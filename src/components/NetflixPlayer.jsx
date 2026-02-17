@@ -2,11 +2,11 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play, Pause, X, Maximize, Minimize, Volume2, Volume1, VolumeX,
-  SkipBack, SkipForward, List, ChevronDown
+  SkipBack, SkipForward, List, ChevronDown, Captions
 } from 'lucide-react';
 import './NetflixPlayer.css';
 
-function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes }) {
+function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes, subtitleUrl }) {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
   const hideTimer = useRef(null);
@@ -35,6 +35,7 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes })
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(null);
+  const [subtitlesOn, setSubtitlesOn] = useState(!!subtitleUrl);
 
   const showControlsTemporarily = useCallback(() => {
     setShowControls(true);
@@ -275,6 +276,7 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes })
         className="vp-video"
         autoPlay
         preload="auto"
+        crossOrigin="anonymous"
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onTimeUpdate={handleTimeUpdate}
@@ -302,11 +304,25 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes })
               vid.currentTime = startTime;
             }
           }
+          // Set subtitle track mode
+          if (vid.textTracks && vid.textTracks.length > 0) {
+            vid.textTracks[0].mode = subtitlesOn ? 'showing' : 'hidden';
+          }
         }}
         onWaiting={() => setBuffering(true)}
         onPlaying={() => setBuffering(false)}
         onCanPlay={() => setBuffering(false)}
-      />
+      >
+        {subtitleUrl && (
+          <track
+            kind="subtitles"
+            src={subtitleUrl}
+            srcLang="en"
+            label="English"
+            default={subtitlesOn}
+          />
+        )}
+      </video>
 
       <div className="vp-video-area" />
 
@@ -400,7 +416,7 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes })
                 <div className="vp-volume-group">
                   <button className="vp-icon-btn" tabIndex={-1} onClick={toggleMute}>
                     {muted || volume === 0 ? <VolumeX size={18} /> :
-                     volume > 0.5 ? <Volume2 size={18} /> : <Volume1 size={18} />}
+                      volume > 0.5 ? <Volume2 size={18} /> : <Volume1 size={18} />}
                   </button>
                   <div
                     className="vp-volume-slider"
@@ -434,6 +450,25 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes })
                     </button>
                   ))}
                 </div>
+
+                {/* CC / Subtitle toggle */}
+                {subtitleUrl && (
+                  <button
+                    className={`vp-icon-btn ${subtitlesOn ? 'active' : ''}`}
+                    tabIndex={-1}
+                    onClick={() => {
+                      const next = !subtitlesOn;
+                      setSubtitlesOn(next);
+                      const vid = videoRef.current;
+                      if (vid?.textTracks?.[0]) {
+                        vid.textTracks[0].mode = next ? 'showing' : 'hidden';
+                      }
+                    }}
+                    title={subtitlesOn ? 'Hide Subtitles' : 'Show Subtitles'}
+                  >
+                    <Captions size={20} />
+                  </button>
+                )}
 
                 {/* Episode list button (TV shows only) */}
                 {episodes && (

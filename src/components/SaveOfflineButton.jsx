@@ -35,6 +35,11 @@ function SaveOfflineButton({ cacheKey, streamUrl, metadata }) {
       <button className="offline-btn downloading" disabled>
         <FaSpinner className="spin" />
         {progress > 0 ? `${Math.round(progress * 100)}%` : 'Downloading...'}
+        {progress > 0 && (
+          <div className="download-progress-bar">
+            <div className="download-progress-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
+          </div>
+        )}
       </button>
     );
   }

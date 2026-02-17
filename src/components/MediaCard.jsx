@@ -13,13 +13,13 @@ function MediaCard({ item, type, badge }) {
   let isWatched = false;
   if (isLocal && type === 'movie') {
     const entry = watchHistory.movies?.[String(item.id)];
-    if (entry && entry.progress >= 0.95) isWatched = true;
+    if (entry && entry.progress >= 0.96) isWatched = true;
   }
   if (isLocal && type === 'tv') {
     // Check if any episode of this show has been fully watched
     const episodes = watchHistory.episodes || {};
     isWatched = Object.entries(episodes).some(
-      ([key, val]) => key.startsWith(`${item.id}-`) && val.progress >= 0.95
+      ([key, val]) => key.startsWith(`${item.id}-`) && val.progress >= 0.96
     );
   }
   const title = type === 'movie' ? item.title : item.name;
