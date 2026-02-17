@@ -181,35 +181,81 @@ function streamTranscoded(filePath, req, res) {
   const startTime = parseFloat(req.query.t) || 0;
   const seekArgs = startTime > 0 ? ['-ss', String(startTime)] : [];
 
-  const ffArgs = [
-    ...seekArgs,
-    '-i', filePath,
-    '-c:v', 'copy',       // copy video stream (fast, no re-encode)
-    '-c:a', 'aac',        // transcode audio to AAC for browser compat
-    '-b:a', '192k',
-    '-movflags', 'frag_keyframe+empty_moov+faststart',
-    '-f', 'mp4',
-    '-'
-  ];
+  // Probe video codec to decide if we can copy or must re-encode
+  const probe = spawn('ffprobe', [
+    '-v', 'error', '-select_streams', 'v:0',
+    '-show_entries', 'stream=codec_name',
+    '-of', 'csv=p=0', filePath,
+  ]);
 
-  const ff = spawn('ffmpeg', ffArgs, { stdio: ['ignore', 'pipe', 'ignore'] });
+  let codecName = '';
+  probe.stdout.on('data', (d) => { codecName += d.toString().trim(); });
 
-  res.writeHead(200, {
-    'Content-Type': 'video/mp4',
-    'Transfer-Encoding': 'chunked',
-    'Cache-Control': 'no-cache',
+  probe.on('close', () => {
+    // Codecs browsers can play natively in MP4 container
+    const browserSafe = new Set(['h264', 'avc1', 'avc']);
+    const canCopy = browserSafe.has(codecName.toLowerCase());
+
+    const videoArgs = canCopy
+      ? ['-c:v', 'copy']
+      : ['-c:v', 'h264_videotoolbox', '-b:v', '5M', '-profile:v', 'high'];
+
+    const ffArgs = [
+      ...seekArgs,
+      '-i', filePath,
+      ...videoArgs,
+      '-c:a', 'aac',
+      '-b:a', '192k',
+      '-movflags', 'frag_keyframe+empty_moov+faststart',
+      '-f', 'mp4',
+      '-'
+    ];
+
+    console.log(`[transcode] ${path.basename(filePath)} — codec: ${codecName}, mode: ${canCopy ? 'copy' : 're-encode'}`);
+
+    const ff = spawn('ffmpeg', ffArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+
+    res.writeHead(200, {
+      'Content-Type': 'video/mp4',
+      'Transfer-Encoding': 'chunked',
+      'Cache-Control': 'no-cache',
+    });
+
+    ff.stdout.pipe(res);
+
+    ff.stderr.on('data', (d) => {
+      // Log ffmpeg stderr for debugging (progress, warnings, errors)
+      const msg = d.toString().trim();
+      if (msg.includes('Error') || msg.includes('error')) {
+        console.error(`[ffmpeg error] ${msg}`);
+      }
+    });
+
+    res.on('close', () => {
+      ff.kill('SIGTERM');
+    });
+
+    ff.on('error', (err) => {
+      console.error('[ffmpeg spawn error]', err.message);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Transcoding failed' });
+      }
+    });
   });
 
-  ff.stdout.pipe(res);
-
-  res.on('close', () => {
-    ff.kill('SIGTERM');
-  });
-
-  ff.on('error', () => {
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'Transcoding failed' });
-    }
+  probe.on('error', () => {
+    // If ffprobe fails, try copy anyway
+    console.error('[ffprobe error] falling back to copy mode');
+    const ffArgs = [
+      ...seekArgs, '-i', filePath,
+      '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
+      '-movflags', 'frag_keyframe+empty_moov+faststart',
+      '-f', 'mp4', '-'
+    ];
+    const ff = spawn('ffmpeg', ffArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+    res.writeHead(200, { 'Content-Type': 'video/mp4', 'Transfer-Encoding': 'chunked' });
+    ff.stdout.pipe(res);
+    res.on('close', () => ff.kill('SIGTERM'));
   });
 }
 
