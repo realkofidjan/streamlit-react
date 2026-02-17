@@ -239,7 +239,7 @@ function Home() {
 
       {offlineVideos.length > 0 && (
         <section className="section container">
-          <h2 className="section-title">Saved Offline <span className="section-count">{offlineVideos.length}</span></h2>
+          <h2 className="section-title">Saved MP4s <span className="section-count">{offlineVideos.length}</span></h2>
           <div className="carousel-row">
             {offlineVideos.map((v) => (
               <Link key={v.key} to={v.linkTo} className="offline-card">

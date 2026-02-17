@@ -1,9 +1,27 @@
 import { Link } from 'react-router-dom';
-import { FaStar, FaHdd, FaCloud } from 'react-icons/fa';
+import { FaStar, FaHdd, FaCloud, FaCheckCircle } from 'react-icons/fa';
 import { getImageUrl } from '../services/tmdb';
+import { useUser } from '../contexts/UserContext';
 import './MediaCard.css';
 
 function MediaCard({ item, type, badge }) {
+  const { currentUser } = useUser();
+  const watchHistory = currentUser?.watchHistory || { movies: {}, episodes: {} };
+
+  // Check if this local item has been watched (>= 95% progress)
+  const isLocal = badge === 'local' || (badge && typeof badge === 'object');
+  let isWatched = false;
+  if (isLocal && type === 'movie') {
+    const entry = watchHistory.movies?.[String(item.id)];
+    if (entry && entry.progress >= 0.95) isWatched = true;
+  }
+  if (isLocal && type === 'tv') {
+    // Check if any episode of this show has been fully watched
+    const episodes = watchHistory.episodes || {};
+    isWatched = Object.entries(episodes).some(
+      ([key, val]) => key.startsWith(`${item.id}-`) && val.progress >= 0.95
+    );
+  }
   const title = type === 'movie' ? item.title : item.name;
   const date = type === 'movie' ? item.release_date : item.first_air_date;
   const link = type === 'movie' ? `/movie/${item.id}` : `/tv/${item.id}`;
@@ -35,6 +53,9 @@ function MediaCard({ item, type, badge }) {
         )}
         {badge && typeof badge === 'object' && badge.type === 'coming-soon' && (
           <div className="media-card-badge-bottom airing-soon">Airing Soon</div>
+        )}
+        {isWatched && (
+          <div className="media-card-watched-badge"><FaCheckCircle /> Watched</div>
         )}
       </div>
       <div className="media-card-info">

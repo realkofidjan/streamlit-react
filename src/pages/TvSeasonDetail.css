@@ -85,6 +85,18 @@
   background: rgba(46, 204, 113, 0.3);
 }
 
+.episode-watched-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #2ecc71;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .episode-upcoming {
   display: inline-flex;
   align-items: center;

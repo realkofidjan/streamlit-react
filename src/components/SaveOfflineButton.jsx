@@ -24,8 +24,8 @@ function SaveOfflineButton({ cacheKey, streamUrl, metadata }) {
     }
   };
 
-  const handleRemove = async () => {
-    await removeOfflineVideo(cacheKey);
+  const handleRemove = () => {
+    removeOfflineVideo(cacheKey);
     setSaved(false);
     setStatus('idle');
   };
@@ -34,7 +34,7 @@ function SaveOfflineButton({ cacheKey, streamUrl, metadata }) {
     return (
       <button className="offline-btn downloading" disabled>
         <FaSpinner className="spin" />
-        {progress > 0 ? `${Math.round(progress * 100)}%` : 'Saving...'}
+        {progress > 0 ? `${Math.round(progress * 100)}%` : 'Downloading...'}
       </button>
     );
   }
@@ -43,7 +43,7 @@ function SaveOfflineButton({ cacheKey, streamUrl, metadata }) {
     return (
       <div className="offline-btn-group">
         <span className="offline-btn saved">
-          <FaCheck /> Saved Offline
+          <FaCheck /> Downloaded
         </span>
         <button className="offline-btn remove" onClick={handleRemove} title="Remove offline copy">
           <FaTrash />
@@ -54,7 +54,7 @@ function SaveOfflineButton({ cacheKey, streamUrl, metadata }) {
 
   return (
     <button className="offline-btn" onClick={handleSave}>
-      <FaDownload /> Save Offline
+      <FaDownload /> Download MP4
     </button>
   );
 }

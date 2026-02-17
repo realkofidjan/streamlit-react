@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { FaStar, FaArrowLeft, FaPlay, FaHdd, FaCalendar, FaChevronRight } from 'react-icons/fa';
+import { FaStar, FaArrowLeft, FaPlay, FaHdd, FaCalendar, FaChevronRight, FaCheckCircle } from 'react-icons/fa';
 import { getTvSeasonDetails, getTvShowDetails, getImageUrl } from '../services/tmdb';
 import { searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes } from '../services/media';
+import { useUser } from '../contexts/UserContext';
 import './TvSeasonDetail.css';
 
 function TvSeasonDetail() {
   const { id, seasonNumber } = useParams();
+  const { currentUser } = useUser();
+  const watchHistory = currentUser?.watchHistory?.episodes || {};
   const [season, setSeason] = useState(null);
   const [show, setShow] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -107,6 +110,8 @@ function TvSeasonDetail() {
             {season.episodes?.map((ep) => {
               const isLocal = localEpisodes.has(ep.episode_number);
               const isAired = ep.air_date && ep.air_date <= today;
+              const epKey = `${id}-s${seasonNumber}e${ep.episode_number}`;
+              const epWatched = isLocal && watchHistory[epKey]?.progress >= 0.95;
 
               return (
                 <div key={ep.id} className="episode-card">
@@ -139,6 +144,9 @@ function TvSeasonDetail() {
                       {ep.air_date && <span className="episode-date">{ep.air_date}</span>}
                     </div>
                   </Link>
+                  {epWatched && (
+                    <span className="episode-watched-badge"><FaCheckCircle /> Watched</span>
+                  )}
                   <div className="episode-action">
                     {isLocal ? (
                       <Link

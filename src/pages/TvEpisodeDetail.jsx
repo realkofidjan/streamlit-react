@@ -6,7 +6,7 @@ import { searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes, getLocalTvSt
 import { useUser } from '../contexts/UserContext';
 import NetflixPlayer from '../components/NetflixPlayer';
 import SaveOfflineButton from '../components/SaveOfflineButton';
-import { isVideoOffline, getOfflineVideoUrl } from '../services/offlineStorage';
+import { isVideoOffline } from '../services/offlineStorage';
 import './TvEpisodeDetail.css';
 
 function TvEpisodeDetail() {
@@ -27,7 +27,7 @@ function TvEpisodeDetail() {
   const [localSeasonFolder, setLocalSeasonFolder] = useState(null);
   const [localEpisodeSet, setLocalEpisodeSet] = useState(new Set());
   const [nextEpLocal, setNextEpLocal] = useState(false);
-  const [offlineBlobUrl, setOfflineBlobUrl] = useState(null);
+
   const autoplayTriggered = useRef(false);
 
   useEffect(() => {
@@ -98,27 +98,15 @@ function TvEpisodeDetail() {
     checkLocal();
   }, [show, seasonNumber, episodeNumber]);
 
-  // Resolve offline blob URL if video is saved
-  useEffect(() => {
-    const cacheKey = `episode-${id}-s${seasonNumber}e${episodeNumber}`;
-    if (!isVideoOffline(cacheKey)) return;
-    let revoke;
-    getOfflineVideoUrl(cacheKey).then((url) => {
-      if (url) {
-        setOfflineBlobUrl(url);
-        revoke = url;
-      }
-    });
-    return () => { if (revoke) URL.revokeObjectURL(revoke); };
-  }, [id, seasonNumber, episodeNumber]);
+  const hasOfflineDownload = isVideoOffline(`episode-${id}-s${seasonNumber}e${episodeNumber}`);
 
   // Auto-play from continue watching
   useEffect(() => {
-    if (autoplay && (localStreamUrl || offlineBlobUrl) && !autoplayTriggered.current) {
+    if (autoplay && localStreamUrl && !autoplayTriggered.current) {
       autoplayTriggered.current = true;
       setShowPlayer(true);
     }
-  }, [autoplay, localStreamUrl, offlineBlobUrl]);
+  }, [autoplay, localStreamUrl]);
 
   useEffect(() => {
     if (showPlayer) {
@@ -194,8 +182,8 @@ function TvEpisodeDetail() {
                 <FaPlay />
               </button>
             )}
-            {offlineBlobUrl ? (
-              <div className="local-badge"><FaHdd /> Saved offline</div>
+            {hasOfflineDownload ? (
+              <div className="local-badge"><FaHdd /> MP4 downloaded</div>
             ) : localStreamUrl ? (
               <div className="local-badge"><FaHdd /> On your drive</div>
             ) : null}
@@ -203,9 +191,9 @@ function TvEpisodeDetail() {
         </div>
 
         {showPlayer && (
-          (offlineBlobUrl || localStreamUrl) ? (
+          localStreamUrl ? (
             <NetflixPlayer
-              src={offlineBlobUrl || localStreamUrl}
+              src={localStreamUrl}
               title={`${show?.name || ''} - S${seasonNumber}E${episodeNumber} - ${episode.name}`}
               onClose={() => setShowPlayer(false)}
               onProgress={handleProgress}
@@ -220,13 +208,13 @@ function TvEpisodeDetail() {
                     season_number: s.season_number,
                     episodes: s.season_number === parseInt(seasonNumber)
                       ? seasonData.episodes?.map((ep) => ({
-                          ...ep,
-                          season_number: parseInt(seasonNumber),
-                          still_path: ep.still_path ? getImageUrl(ep.still_path, 'w300') : null,
-                          onPlay: localEpisodeSet.has(ep.episode_number)
-                            ? () => navigate(`/tv/${id}/season/${seasonNumber}/episode/${ep.episode_number}?autoplay=1`)
-                            : null,
-                        }))
+                        ...ep,
+                        season_number: parseInt(seasonNumber),
+                        still_path: ep.still_path ? getImageUrl(ep.still_path, 'w300') : null,
+                        onPlay: localEpisodeSet.has(ep.episode_number)
+                          ? () => navigate(`/tv/${id}/season/${seasonNumber}/episode/${ep.episode_number}?autoplay=1`)
+                          : null,
+                      }))
                       : [],
                   })) || [],
               } : undefined}

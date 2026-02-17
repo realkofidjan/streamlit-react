@@ -1,4 +1,3 @@
-const CACHE_NAME = 'streamit-offline-videos';
 const STORAGE_KEY = 'streamit-offline-metadata';
 
 function getMetadata() {
@@ -31,7 +30,6 @@ export async function saveVideoOffline(key, streamUrl, metadata, onProgress) {
   const contentLength = response.headers.get('content-length');
   const total = contentLength ? parseInt(contentLength, 10) : 0;
 
-  // Clone the response for caching while reading for progress
   const reader = response.body.getReader();
   const chunks = [];
   let received = 0;
@@ -46,48 +44,28 @@ export async function saveVideoOffline(key, streamUrl, metadata, onProgress) {
     }
   }
 
-  // Reconstruct the response and cache it
-  const blob = new Blob(chunks);
-  const cacheResponse = new Response(blob, {
-    headers: {
-      'Content-Type': response.headers.get('content-type') || 'video/mp4',
-      'Content-Length': String(blob.size),
-    },
-  });
+  const blob = new Blob(chunks, { type: 'video/mp4' });
 
-  const cache = await caches.open(CACHE_NAME);
-  await cache.put(streamUrl, cacheResponse);
+  // Trigger a real browser download
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = `${(metadata.title || 'video').replace(/[/\\?%*:|"<>]/g, '_')}.mp4`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(blobUrl);
 
-  // Save metadata
+  // Save metadata (no blob storage — file is now on the user's device)
   const meta = getMetadata();
   meta[key] = { ...metadata, streamUrl, savedAt: new Date().toISOString(), size: blob.size };
   setMetadata(meta);
 }
 
-export async function removeOfflineVideo(key) {
+export function removeOfflineVideo(key) {
   const meta = getMetadata();
-  const entry = meta[key];
-  if (entry?.streamUrl) {
-    const cache = await caches.open(CACHE_NAME);
-    await cache.delete(entry.streamUrl);
-  }
   delete meta[key];
   setMetadata(meta);
-}
-
-export async function getOfflineVideoUrl(key) {
-  const meta = getMetadata();
-  const entry = meta[key];
-  if (!entry?.streamUrl) return null;
-  try {
-    const cache = await caches.open(CACHE_NAME);
-    const response = await cache.match(entry.streamUrl);
-    if (!response) return null;
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
-  } catch {
-    return null;
-  }
 }
 
 export function formatFileSize(bytes) {
