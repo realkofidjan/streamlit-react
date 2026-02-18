@@ -105,14 +105,7 @@ function Settings() {
     } catch { setStatus('offline'); }
   };
 
-  const handleSave = () => {
-    const cleaned = url.replace(/\/+$/, '');
-    setMediaUrl(cleaned); setUrl(cleaned); setSaved(true);
-    testConnection(cleaned);
-    setTimeout(() => setSaved(false), 2000);
-    // Refresh page to pull new data from new server
-    setTimeout(() => window.location.reload(), 1500);
-  };
+
 
   const handleSavePaths = async () => {
     try {
@@ -250,11 +243,12 @@ function Settings() {
         {/* ===== MEDIA SERVER ===== */}
         {activeNav === 'server' && (
           <div className="nf-account-card">
-            <label className="nf-field-label">Media Server URL</label>
+            <label className="nf-field-label">Active Media Server</label>
             <div className="nf-field-row">
-              <input type="url" className="nf-field-input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://your-tunnel.trycloudflare.com" />
-              <button className="nf-btn-blue" onClick={handleSave}>{saved ? <><FaCheck /> Saved</> : 'Save'}</button>
-              <button className="nf-btn-outline" onClick={() => testConnection(url)}><FaSync /> Test</button>
+              <div className="nf-permanent-url">
+                <FaServer /> {url || 'https://streamlit.stream'}
+              </div>
+              <button className="nf-btn-outline" onClick={() => testConnection(url)}><FaSync /> Refresh Status</button>
             </div>
             {status && (
               <div className={`nf-status-pill ${status}`}>
@@ -264,8 +258,8 @@ function Settings() {
               </div>
             )}
             <div className="nf-help-block">
-              <strong>How to start:</strong> Run <code>bash start-media-server.sh</code> → Copy the tunnel URL → Paste above.
-              <br />The page will refresh automatically after saving to load content from the new server.
+              <strong>Managed Configuration:</strong> This server is permanently configured via the system environment.
+              Manual overrides are disabled to ensure connection stability.
             </div>
           </div>
         )}

@@ -287,6 +287,26 @@
   min-width: 0;
 }
 
+/* Permanent URL Display */
+.nf-permanent-url {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 1.25rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #fff;
+  font-family: monospace;
+  font-size: 0.95rem;
+  flex: 1;
+}
+
+.nf-permanent-url svg {
+  color: #0071eb;
+  font-size: 1.1rem;
+}
+
 /* Buttons */
 .nf-btn-blue {
   background: #0071eb;
