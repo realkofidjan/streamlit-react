@@ -10,6 +10,7 @@ function getDefaultUrl() {
 }
 
 export function getMediaUrl() {
+  if (import.meta.env.VITE_MEDIA_SERVER_URL) return import.meta.env.VITE_MEDIA_SERVER_URL;
   return localStorage.getItem('mediaServerUrl') || getDefaultUrl();
 }
 
