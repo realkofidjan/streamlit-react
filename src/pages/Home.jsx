@@ -306,31 +306,9 @@ function Home() {
           </section>
         )}
 
-        {localMovieTmdb.length > 0 && (
-          <NetflixRow title="Your Movies" count={localMovieTmdb.length} className="nf-backdrop-row">
-            {localMovieTmdb.map((m) => {
-              const entry = watchHistory[String(m.id)];
-              const isWatched = entry && entry.status === 'watched'; // or progress >= 0.96
-              return (
-                <BackdropCard
-                  key={m.id}
-                  item={m}
-                  type="movie"
-                  badge={isWatched ? 'watched' : null}
-                  onClick={(i) => openModal(i, 'movie')}
-                />
-              );
-            })}
-          </NetflixRow>
-        )}
 
-        {localTvTmdb.length > 0 && (
-          <NetflixRow title="Your TV Shows" count={localTvTmdb.length} className="nf-backdrop-row">
-            {localTvTmdb.map((s) => (
-              <BackdropCard key={s.id} item={s} type="tv" badge={tvBadges[s.id]} onClick={(i) => openModal(i, 'tv')} />
-            ))}
-          </NetflixRow>
-        )}
+
+
 
         {watchlistItems.length > 0 && (
           <NetflixRow title="My List" count={watchlistItems.length}>
