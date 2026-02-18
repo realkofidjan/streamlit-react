@@ -264,6 +264,22 @@ function Home() {
       <HeroBillboard item={featured} type={featured?._type || 'movie'} onMoreInfo={(item, type) => openModal(item, type)} />
 
       <div className="nf-rows-container">
+        {filteredRecMovies.length > 0 && (
+          <NetflixRow title="Popular Movies">
+            {filteredRecMovies.slice(0, 20).map((m) => (
+              <MediaCard key={m.id} item={m} type="movie" badge="cloud" onClick={(i) => openModal(i, 'movie')} />
+            ))}
+          </NetflixRow>
+        )}
+
+        {filteredRecTv.length > 0 && (
+          <NetflixRow title="Popular TV Shows">
+            {filteredRecTv.slice(0, 20).map((s) => (
+              <MediaCard key={s.id} item={s} type="tv" badge="cloud" onClick={(i) => openModal(i, 'tv')} />
+            ))}
+          </NetflixRow>
+        )}
+
         {continueWatching.length > 0 && (
           <section className="nf-section">
             <div className="nf-section-header-row">
@@ -334,21 +350,7 @@ function Home() {
           </NetflixRow>
         )}
 
-        {filteredRecMovies.length > 0 && (
-          <NetflixRow title="Popular Movies">
-            {filteredRecMovies.slice(0, 20).map((m) => (
-              <MediaCard key={m.id} item={m} type="movie" badge="cloud" onClick={(i) => openModal(i, 'movie')} />
-            ))}
-          </NetflixRow>
-        )}
 
-        {filteredRecTv.length > 0 && (
-          <NetflixRow title="Popular TV Shows">
-            {filteredRecTv.slice(0, 20).map((s) => (
-              <MediaCard key={s.id} item={s} type="tv" badge="cloud" onClick={(i) => openModal(i, 'tv')} />
-            ))}
-          </NetflixRow>
-        )}
 
         {trending.length > 0 && (
           <NetflixRow title="Trending Now">

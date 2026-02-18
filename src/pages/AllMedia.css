@@ -70,15 +70,24 @@
 /* ===== Media Grid (Posters) ===== */
 .nf-media-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* Adaptive width */
-  gap: 3rem 1rem; /* Vertical gap larger for titles */
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  /* Adaptive width */
+  gap: 3rem 1rem;
+  /* Vertical gap larger for titles */
   padding: 0 4%;
   animation: fadeIn 0.4s ease-in-out;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Adjust MediaCard slightly for grid context */
@@ -100,7 +109,7 @@
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .nf-filter-bar {
     width: 100%;
     overflow-x: auto;
@@ -115,7 +124,8 @@
 
 @media (max-width: 480px) {
   .nf-media-grid {
-    grid-template-columns: repeat(3, 1fr); /* Force 3 columns on mobile */
+    grid-template-columns: repeat(3, 1fr);
+    /* Force 3 columns on mobile */
     gap: 1.5rem 0.5rem;
     padding: 0 3%;
   }

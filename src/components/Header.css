@@ -549,6 +549,10 @@
     left: 50%;
     transform: translate(-50%, -50%) scale(0.9);
     width: min(85vw, 320px);
+    max-height: 85vh;
+    /* Added max-height */
+    overflow-y: auto;
+    /* Added scroll */
     background: #1a1a1a;
     border: 1px solid #333;
     border-radius: 16px;
@@ -564,6 +568,16 @@
     opacity: 1;
     pointer-events: auto;
     transform: translate(-50%, -50%) scale(1);
+  }
+
+  /* Hide "Back" text on mobile */
+  .back-btn span {
+    display: none;
+  }
+
+  /* Adjust search bar width if needed */
+  .header-search-wrapper {
+    margin-right: 0.5rem;
   }
 
   .mobile-menu-profile {
