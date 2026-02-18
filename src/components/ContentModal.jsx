@@ -265,7 +265,65 @@ function ContentModal({ content, onClose, show }) {
         if (isMovie) {
             const progress = currentUser.watchHistory?.movies?.[String(item.id)];
             if (progress && progress.currentTime > 0 && progress.progress < 0.95) {
-                return { time: progress.currentTime, pct: progress.progress };
+                return { time: progress.currentTime, pct: progress.progress, isResume: true };
+            }
+        } else if (item.seasons || seasonDetails) {
+            // TV Show Resume Logic
+            const showId = String(item.id);
+            const episodesHistory = currentUser.watchHistory?.episodes || {};
+
+            // Find all episodes for this show in history
+            const watchedEpisodes = Object.keys(episodesHistory)
+                .filter(key => key.startsWith(`${showId}-`))
+                .map(key => {
+                    const parts = key.match(/-s(\d+)e(\d+)/);
+                    if (!parts) return null;
+                    return {
+                        key,
+                        season: parseInt(parts[1]),
+                        episode: parseInt(parts[2]),
+                        ...episodesHistory[key]
+                    };
+                })
+                .filter(ep => ep !== null)
+                .sort((a, b) => {
+                    // Sort by timestamp if available (newest first)
+                    if (b.timestamp && a.timestamp) return b.timestamp - a.timestamp;
+                    // Fallback to highest season/episode
+                    if (b.season !== a.season) return b.season - a.season;
+                    return b.episode - a.episode;
+                });
+
+            if (watchedEpisodes.length > 0) {
+                const lastWatched = watchedEpisodes[0];
+
+                // If the last watched episode is not finished (progress < 95%), resume it
+                if (lastWatched.progress < 0.95) {
+                    return {
+                        type: 'episode',
+                        season: lastWatched.season,
+                        episode: lastWatched.episode,
+                        time: lastWatched.currentTime,
+                        pct: lastWatched.progress,
+                        isResume: true
+                    };
+                }
+                // If finished, suggest the next episode (this is a simple incremental logic)
+                // In a perfect world we'd check if the next episode exists in seasonDetails, 
+                // but we might not have all season details loaded. We'll assume it exists or rely on user to pick.
+                // For better UX, let's just stick to the specific episode if we can't confirm next exists easily without fetching.
+                // Actually, if we are in the modal, we have `seasonDetails` for the *selected* season.
+                // Let's just default to "Play S(last)E(last+1)" 
+                else {
+                    return {
+                        type: 'episode',
+                        season: lastWatched.season,
+                        episode: lastWatched.episode + 1,
+                        time: 0,
+                        pct: 0,
+                        isResume: false // It's a "Play Next", not exactly "Resume" mid-stream
+                    };
+                }
             }
         }
         return null;
@@ -347,9 +405,25 @@ function ContentModal({ content, onClose, show }) {
                                     </button>
                                 )}
 
-                                {!isMovie && seasonDetails?.episodes?.[0] && (
-                                    <button className="modal-play-btn" onClick={() => handleEpisodePlay(selectedSeason, seasonDetails.episodes[0].episode_number)}>
-                                        <FaPlay /> {localEpisodeSet.has(seasonDetails.episodes[0].episode_number) ? 'Play' : 'Stream'} S{selectedSeason}E{seasonDetails.episodes[0].episode_number}
+                                {!isMovie && (
+                                    <button
+                                        className="modal-play-btn"
+                                        onClick={() => {
+                                            if (resumeInfo && !isMovie) {
+                                                handleEpisodePlay(resumeInfo.season, resumeInfo.episode, resumeInfo.time);
+                                            } else if (seasonDetails?.episodes?.[0]) {
+                                                handleEpisodePlay(selectedSeason, seasonDetails.episodes[0].episode_number);
+                                            }
+                                        }}
+                                        disabled={!resumeInfo && !seasonDetails?.episodes?.[0]}
+                                    >
+                                        <FaPlay />
+                                        {resumeInfo && !isMovie
+                                            ? (resumeInfo.isResume ? `Resume S${resumeInfo.season}:E${resumeInfo.episode}` : `Play S${resumeInfo.season}:E${resumeInfo.episode}`)
+                                            : (seasonDetails?.episodes?.[0]
+                                                ? `${localEpisodeSet.has(seasonDetails.episodes[0].episode_number) ? 'Play' : 'Stream'} S${selectedSeason}E${seasonDetails.episodes[0].episode_number}`
+                                                : 'Play')
+                                        }
                                     </button>
                                 )}
 

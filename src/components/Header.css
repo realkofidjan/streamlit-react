@@ -533,6 +533,8 @@
   .header-search-wrapper {
     flex: 0 0 auto;
     margin: 0;
+    margin-left: auto;
+    /* Push to the right */
     transition: all 0.3s ease;
   }
 
@@ -543,6 +545,8 @@
     top: 50%;
     transform: translateY(-50%);
     z-index: 1000;
+    margin-left: 0;
+    /* Reset margin when active */
   }
 
   .header-search-wrapper:not(.mobile-active) .header-search-bar {
@@ -580,6 +584,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    margin-left: 0.5rem;
+    /* Space between search icon and menu */
   }
 
   .mobile-overlay {
