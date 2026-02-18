@@ -1,17 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import ContentModal from '../components/ContentModal';
+import MediaCard from '../components/MediaCard';
 import { getLibrary } from '../services/media';
-import { searchTvShows, getTvShowDetails, getImageUrl } from '../services/tmdb';
+import { searchTvShows, getTvShowDetails, getTvGenres } from '../services/tmdb';
 import { cleanName, extractYear, pickBestResult } from '../utils/matchTmdb';
-import { useUser } from '../contexts/UserContext';
 import './AllMedia.css';
 
 function AllTvShows() {
-  const { currentUser } = useUser();
-  const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [shows, setShows] = useState([]);
+  const [genres, setGenres] = useState({});
   const [modalContent, setModalContent] = useState(null);
   const [showModal, setShowModal] = useState(false);
+
+  // Filters
+  const [sortBy, setSortBy] = useState('title_asc');
+  const [selectedGenre, setSelectedGenre] = useState('all');
 
   const openModal = (item) => {
     setModalContent({ ...item, type: 'tv' });
@@ -19,8 +23,16 @@ function AllTvShows() {
   };
 
   useEffect(() => {
-    const load = async () => {
+    const fetchData = async () => {
       try {
+        setLoading(true);
+        // Fetch Genres
+        const genreRes = await getTvGenres();
+        const genreMap = {};
+        genreRes.data.genres.forEach(g => genreMap[g.id] = g.name);
+        setGenres(genreMap);
+
+        // Fetch Shows
         const libRes = await getLibrary();
         const localShows = libRes.data.tvShows || [];
         const results = [];
@@ -42,7 +54,6 @@ function AllTvShows() {
                   const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
                   const threeMonthsAhead = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate());
 
-                  // Check if show has a season that aired recently
                   if (detail.seasons && detail.seasons.length > 0) {
                     const latestSeason = detail.seasons
                       .filter(sea => sea.season_number > 0 && sea.air_date)
@@ -51,35 +62,19 @@ function AllTvShows() {
                     if (latestSeason) {
                       const airDate = new Date(latestSeason.air_date);
                       if (airDate >= threeMonthsAgo && airDate <= now && latestSeason.season_number > 1) {
-                        badge = 'new-season';
+                        badge = { type: 'new-episodes' };
                       }
                     }
-
-                    // Check for upcoming season (next_episode_to_air or future season air_date)
                     if (!badge && detail.next_episode_to_air) {
                       const nextAir = new Date(detail.next_episode_to_air.air_date);
                       if (nextAir > now && nextAir <= threeMonthsAhead) {
-                        badge = 'coming-soon';
-                      }
-                    }
-
-                    // Check for future scheduled seasons
-                    if (!badge) {
-                      const futureSeason = detail.seasons.find(sea => {
-                        if (!sea.air_date || sea.season_number === 0) return false;
-                        const d = new Date(sea.air_date);
-                        return d > now && d <= threeMonthsAhead;
-                      });
-                      if (futureSeason) {
-                        badge = 'coming-soon';
+                        badge = { type: 'coming-soon' };
                       }
                     }
                   }
-                } catch {
-                  // badge stays null
-                }
+                } catch { }
 
-                return { ...best, localName: s.name, badge };
+                return { ...best, localName: s.name, badge: badge || 'local' };
               }
             } catch { /* skip */ }
             return null;
@@ -94,20 +89,55 @@ function AllTvShows() {
           seen.add(s.id);
           return true;
         });
-        // Shuffle for random order on each reload
-        for (let i = unique.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [unique[i], unique[j]] = [unique[j], unique[i]];
-        }
+
         setShows(unique);
-      } catch {
-        // ignore
+      } catch (err) {
+        console.error("Failed to load TV shows", err);
       } finally {
         setLoading(false);
       }
     };
-    load();
+    fetchData();
   }, []);
+
+  const processedShows = useMemo(() => {
+    let result = [...shows];
+
+    // Filter
+    if (selectedGenre !== 'all') {
+      const genreId = parseInt(selectedGenre);
+      result = result.filter(s => s.genre_ids && s.genre_ids.includes(genreId));
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'title_asc':
+          return (a.name || '').localeCompare(b.name || '');
+        case 'title_desc':
+          return (b.name || '').localeCompare(a.name || '');
+        case 'date_new':
+          return new Date(b.first_air_date || 0) - new Date(a.first_air_date || 0);
+        case 'date_old':
+          return new Date(a.first_air_date || 0) - new Date(b.first_air_date || 0);
+        case 'rating_high':
+          return b.vote_average - a.vote_average;
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [shows, sortBy, selectedGenre]);
+
+  // Extract available genres
+  const availableGenres = useMemo(() => {
+    const ids = new Set();
+    shows.forEach(s => {
+      if (s.genre_ids) s.genre_ids.forEach(id => ids.add(id));
+    });
+    return Array.from(ids).map(id => ({ id, name: genres[id] })).filter(g => g.name).sort((a, b) => a.name.localeCompare(b.name));
+  }, [shows, genres]);
 
   if (loading) {
     return (
@@ -120,48 +150,55 @@ function AllTvShows() {
   return (
     <div className="all-media-page">
       <div className="container">
-        <h1 className="all-media-title">TV Shows <span className="all-media-count">{shows.length}</span></h1>
+        <div className="all-media-header">
+          <h1 className="all-media-title">TV Shows <span className="all-media-count">{processedShows.length}</span></h1>
 
-        <div className="nf-backdrop-grid">
-          {shows.map((s) => {
-            const backdropUrl = s.backdrop_path
-              ? getImageUrl(s.backdrop_path, 'w780')
-              : (s.poster_path ? getImageUrl(s.poster_path, 'w500') : null);
-
-            return (
-              <div
-                key={s.id}
-                className="nf-backdrop-card"
-                onClick={() => openModal(s)}
-                role="button"
-                tabIndex={0}
+          <div className="nf-filter-bar">
+            {/* Genre Filter */}
+            <div className="nf-filter-group">
+              <select
+                className="nf-filter-select"
+                value={selectedGenre}
+                onChange={(e) => setSelectedGenre(e.target.value)}
               >
-                <div className="nf-backdrop-img">
-                  {backdropUrl ? (
-                    <img src={backdropUrl} alt={s.name} loading="lazy" />
-                  ) : (
-                    <div className="nf-backdrop-placeholder">{s.name}</div>
-                  )}
-                  <div className="nf-backdrop-gradient" />
-                  <div className="nf-backdrop-title">{s.name}</div>
+                <option value="all">All Genres</option>
+                {availableGenres.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
 
-                  {/* Badges */}
-                  <div className="nf-backdrop-badges">
-                    {s.badge === 'new-season' && (
-                      <span className="nf-badge nf-badge-new">New Season</span>
-                    )}
-                    {s.badge === 'coming-soon' && (
-                      <span className="nf-badge nf-badge-soon">Coming Soon</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+            {/* Sort */}
+            <div className="nf-filter-group">
+              <select
+                className="nf-filter-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="title_asc">Title (A-Z)</option>
+                <option value="title_desc">Title (Z-A)</option>
+                <option value="date_new">Newest First</option>
+                <option value="date_old">Oldest First</option>
+                <option value="rating_high">Top Rated</option>
+              </select>
+            </div>
+          </div>
         </div>
 
-        {shows.length === 0 && (
-          <p className="all-media-empty">No TV shows found on your drive.</p>
+        <div className="nf-media-grid">
+          {processedShows.map((s) => (
+            <MediaCard
+              key={s.id}
+              item={s}
+              type="tv"
+              badge={s.badge}
+              onClick={() => openModal(s)}
+            />
+          ))}
+        </div>
+
+        {processedShows.length === 0 && (
+          <p className="all-media-empty">No TV shows found matching your filters.</p>
         )}
       </div>
 

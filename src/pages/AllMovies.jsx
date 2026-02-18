@@ -1,32 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import ContentModal from '../components/ContentModal';
+import MediaCard from '../components/MediaCard';
 import { getLibrary } from '../services/media';
-import { searchMovies, getImageUrl } from '../services/tmdb';
+import { searchMovies, getMovieGenres } from '../services/tmdb';
 import { cleanName, extractYear, pickBestResult } from '../utils/matchTmdb';
-import { useUser } from '../contexts/UserContext';
-import { FaCheckCircle } from 'react-icons/fa';
+import { FaFilter, FaSortAmountDown } from 'react-icons/fa';
 import './AllMedia.css';
 
 function AllMovies() {
-  const { currentUser } = useUser();
-  const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [movies, setMovies] = useState([]);
+  const [genres, setGenres] = useState({});
   const [modalContent, setModalContent] = useState(null);
   const [showModal, setShowModal] = useState(false);
+
+  // Filters
+  const [sortBy, setSortBy] = useState('title_asc');
+  const [selectedGenre, setSelectedGenre] = useState('all');
 
   const openModal = (item) => {
     setModalContent({ ...item, type: 'movie' });
     setShowModal(true);
   };
 
-  const watchHistory = currentUser?.watchHistory?.movies || {};
-
   useEffect(() => {
-    const load = async () => {
+    const fetchData = async () => {
       try {
+        setLoading(true);
+        // Fetch Genres
+        const genreRes = await getMovieGenres();
+        const genreMap = {};
+        genreRes.data.genres.forEach(g => genreMap[g.id] = g.name);
+        setGenres(genreMap);
+
+        // Fetch Movies
         const libRes = await getLibrary();
         const localMovies = libRes.data.movies || [];
         const results = [];
+
         for (let i = 0; i < localMovies.length; i += 5) {
           const batch = localMovies.slice(i, i + 5);
           const promises = batch.map(async (m) => {
@@ -41,26 +52,62 @@ function AllMovies() {
           const batchResults = await Promise.all(promises);
           results.push(...batchResults.filter(Boolean));
         }
+
         const seen = new Set();
         const unique = results.filter((m) => {
           if (seen.has(m.id)) return false;
           seen.add(m.id);
           return true;
         });
-        // Shuffle for random order on each reload
-        for (let i = unique.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [unique[i], unique[j]] = [unique[j], unique[i]];
-        }
+
         setMovies(unique);
-      } catch {
-        // ignore
+      } catch (err) {
+        console.error("Failed to load movies", err);
       } finally {
         setLoading(false);
       }
     };
-    load();
+    fetchData();
   }, []);
+
+  const processedMovies = useMemo(() => {
+    let result = [...movies];
+
+    // Filter
+    if (selectedGenre !== 'all') {
+      const genreId = parseInt(selectedGenre);
+      result = result.filter(m => m.genre_ids && m.genre_ids.includes(genreId));
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'title_asc':
+          return a.title.localeCompare(b.title);
+        case 'title_desc':
+          return b.title.localeCompare(a.title);
+        case 'date_new':
+          return new Date(b.release_date || 0) - new Date(a.release_date || 0);
+        case 'date_old':
+          return new Date(a.release_date || 0) - new Date(b.release_date || 0);
+        case 'rating_high':
+          return b.vote_average - a.vote_average;
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [movies, sortBy, selectedGenre]);
+
+  // Extract available genres from current movies
+  const availableGenres = useMemo(() => {
+    const ids = new Set();
+    movies.forEach(m => {
+      if (m.genre_ids) m.genre_ids.forEach(id => ids.add(id));
+    });
+    return Array.from(ids).map(id => ({ id, name: genres[id] })).filter(g => g.name).sort((a, b) => a.name.localeCompare(b.name));
+  }, [movies, genres]);
 
   if (loading) {
     return (
@@ -73,48 +120,55 @@ function AllMovies() {
   return (
     <div className="all-media-page">
       <div className="container">
-        <h1 className="all-media-title">Movies <span className="all-media-count">{movies.length}</span></h1>
+        <div className="all-media-header">
+          <h1 className="all-media-title">Movies <span className="all-media-count">{processedMovies.length}</span></h1>
 
-        <div className="nf-backdrop-grid">
-          {movies.map((m) => {
-            const backdropUrl = m.backdrop_path
-              ? getImageUrl(m.backdrop_path, 'w780')
-              : (m.poster_path ? getImageUrl(m.poster_path, 'w500') : null);
-
-            const entry = watchHistory[String(m.id)];
-            const isWatched = entry && entry.progress >= 0.96;
-
-            return (
-              <div
-                key={m.id}
-                className="nf-backdrop-card"
-                onClick={() => openModal(m)}
-                role="button"
-                tabIndex={0}
+          <div className="nf-filter-bar">
+            {/* Genre Filter */}
+            <div className="nf-filter-group">
+              <select
+                className="nf-filter-select"
+                value={selectedGenre}
+                onChange={(e) => setSelectedGenre(e.target.value)}
               >
-                <div className="nf-backdrop-img">
-                  {backdropUrl ? (
-                    <img src={backdropUrl} alt={m.title} loading="lazy" />
-                  ) : (
-                    <div className="nf-backdrop-placeholder">{m.title}</div>
-                  )}
-                  <div className="nf-backdrop-gradient" />
-                  <div className="nf-backdrop-title">{m.title}</div>
+                <option value="all">All Genres</option>
+                {availableGenres.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
 
-                  {/* Badges */}
-                  <div className="nf-backdrop-badges">
-                    {isWatched && (
-                      <span className="nf-badge nf-badge-watched"><FaCheckCircle /> Watched</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+            {/* Sort */}
+            <div className="nf-filter-group">
+              <select
+                className="nf-filter-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="title_asc">Title (A-Z)</option>
+                <option value="title_desc">Title (Z-A)</option>
+                <option value="date_new">Newest First</option>
+                <option value="date_old">Oldest First</option>
+                <option value="rating_high">Top Rated</option>
+              </select>
+            </div>
+          </div>
         </div>
 
-        {movies.length === 0 && (
-          <p className="all-media-empty">No movies found on your drive.</p>
+        <div className="nf-media-grid">
+          {processedMovies.map((m) => (
+            <MediaCard
+              key={m.id}
+              item={m}
+              type="movie"
+              badge="local" // Or just pass 'local' string
+              onClick={() => openModal(m)}
+            />
+          ))}
+        </div>
+
+        {processedMovies.length === 0 && (
+          <p className="all-media-empty">No movies found matching your filters.</p>
         )}
       </div>
 

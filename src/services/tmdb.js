@@ -73,3 +73,9 @@ export const getRecommendedTvShows = (page = 1) =>
 
 export const getTrendingAll = () =>
   api.get('/trending/all/week');
+
+export const getMovieGenres = () =>
+  api.get('/genre/movie/list');
+
+export const getTvGenres = () =>
+  api.get('/genre/tv/list');
