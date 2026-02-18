@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import HeroBillboard from '../components/HeroSearch';
 import MediaCard from '../components/MediaCard';
+import ContentModal from '../components/ContentModal';
 import { useUser } from '../contexts/UserContext';
 import { getLibrary } from '../services/media';
 import { searchMovies, searchTvShows, getTvShowDetails, getRecommendedMovies, getRecommendedTvShows, getTrendingAll, getImageUrl } from '../services/tmdb';
@@ -73,6 +74,12 @@ function Home() {
   const [tvBadges, setTvBadges] = useState({});
   const [offlineVideos, setOfflineVideos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedContent, setSelectedContent] = useState(null);
+
+  const openModal = (item, type) => {
+    setSelectedContent({ ...item, type: type || item.media_type || 'movie' });
+  };
+  const closeModal = () => setSelectedContent(null);
 
   useEffect(() => {
     setOfflineVideos(getOfflineVideos());
@@ -291,7 +298,7 @@ function Home() {
         {localMovieTmdb.length > 0 && (
           <NetflixRow title="Your Movies" count={localMovieTmdb.length}>
             {localMovieTmdb.map((m) => (
-              <MediaCard key={m.id} item={m} type="movie" badge="local" />
+              <MediaCard key={m.id} item={m} type="movie" badge="local" onClick={(i) => openModal(i, 'movie')} />
             ))}
           </NetflixRow>
         )}
@@ -299,7 +306,7 @@ function Home() {
         {localTvTmdb.length > 0 && (
           <NetflixRow title="Your TV Shows" count={localTvTmdb.length}>
             {localTvTmdb.map((s) => (
-              <MediaCard key={s.id} item={s} type="tv" badge={tvBadges[s.id] || 'local'} />
+              <MediaCard key={s.id} item={s} type="tv" badge={tvBadges[s.id] || 'local'} onClick={(i) => openModal(i, 'tv')} />
             ))}
           </NetflixRow>
         )}
@@ -307,7 +314,7 @@ function Home() {
         {watchlistItems.length > 0 && (
           <NetflixRow title="My List" count={watchlistItems.length}>
             {watchlistItems.map((item) => (
-              <MediaCard key={`${item._type}-${item.id}`} item={item} type={parseInt(item._type) === item._type ? (item._type === 'movie' ? 'movie' : 'tv') : item._type} />
+              <MediaCard key={`${item._type}-${item.id}`} item={item} type={parseInt(item._type) === item._type ? (item._type === 'movie' ? 'movie' : 'tv') : item._type} onClick={(i) => openModal(i, item._type)} />
             ))}
           </NetflixRow>
         )}
@@ -331,7 +338,7 @@ function Home() {
         {filteredRecMovies.length > 0 && (
           <NetflixRow title="Popular Movies">
             {filteredRecMovies.slice(0, 20).map((m) => (
-              <MediaCard key={m.id} item={m} type="movie" badge="cloud" />
+              <MediaCard key={m.id} item={m} type="movie" badge="cloud" onClick={(i) => openModal(i, 'movie')} />
             ))}
           </NetflixRow>
         )}
@@ -339,7 +346,7 @@ function Home() {
         {filteredRecTv.length > 0 && (
           <NetflixRow title="Popular TV Shows">
             {filteredRecTv.slice(0, 20).map((s) => (
-              <MediaCard key={s.id} item={s} type="tv" badge="cloud" />
+              <MediaCard key={s.id} item={s} type="tv" badge="cloud" onClick={(i) => openModal(i, 'tv')} />
             ))}
           </NetflixRow>
         )}
@@ -352,11 +359,14 @@ function Home() {
                 item={t}
                 type={t.media_type === 'tv' ? 'tv' : 'movie'}
                 badge="cloud"
+                onClick={(i) => openModal(i, t.media_type)}
               />
             ))}
           </NetflixRow>
         )}
       </div>
+
+      <ContentModal show={!!selectedContent} content={selectedContent} onClose={closeModal} />
     </div>
   );
 }

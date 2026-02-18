@@ -4,7 +4,7 @@ import { getImageUrl } from '../services/tmdb';
 import { useUser } from '../contexts/UserContext';
 import './MediaCard.css';
 
-function MediaCard({ item, type, badge }) {
+function MediaCard({ item, type, badge, onClick }) {
   const { currentUser } = useUser();
   const watchHistory = currentUser?.watchHistory || { movies: {}, episodes: {} };
 
@@ -25,8 +25,15 @@ function MediaCard({ item, type, badge }) {
   const link = type === 'movie' ? `/movie/${item.id}` : `/tv/${item.id}`;
   const posterUrl = getImageUrl(item.poster_path, 'w342');
 
+  const handleClick = (e) => {
+    if (onClick) {
+      e.preventDefault();
+      onClick(item);
+    }
+  };
+
   return (
-    <Link to={link} className="nf-card">
+    <Link to={link} className="nf-card" onClick={handleClick}>
       <div className="nf-card-img">
         {posterUrl ? (
           <img src={posterUrl} alt={title} loading="lazy" />

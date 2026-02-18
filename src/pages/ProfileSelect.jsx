@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { FaPlus, FaUser, FaCog, FaSyncAlt } from 'react-icons/fa';
+import { FaPlus, FaUser } from 'react-icons/fa';
 import { useUser } from '../contexts/UserContext';
 import { isServerConfigured } from '../services/media';
 import './ProfileSelect.css';
 
-const AVATARS = ['#e50914', '#3498db', '#2ecc71', '#9b59b6', '#f39c12', '#1abc9c'];
+const AVATARS = ['#e50914', '#3498db', '#2ecc71', '#9b59b6', '#f39c12', '#1abc9c', '#34495e', '#e67e22'];
 
 function ProfileSelect() {
   const { users, createUser, login, fetchUsers } = useUser();
@@ -17,6 +17,10 @@ function ProfileSelect() {
   const [newPin, setNewPin] = useState('');
   const [newAvatar, setNewAvatar] = useState(AVATARS[0]);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleLogin = async () => {
     setError('');
@@ -48,8 +52,8 @@ function ProfileSelect() {
           <div className="profile-pin-avatar" style={{ background: showPin.avatar }}>
             {showPin.username[0].toUpperCase()}
           </div>
-          <h2>{showPin.username}</h2>
-          <p className="profile-pin-label">Enter your PIN</p>
+          <h2 style={{ marginBottom: '1.5rem', color: '#fff' }}>{showPin.username}</h2>
+          <p className="profile-pin-label">Profile Lock is on.</p>
           <input
             type="password"
             inputMode="numeric"
@@ -63,16 +67,16 @@ function ProfileSelect() {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && pin.length === 4) handleLogin();
             }}
-            placeholder="----"
+            placeholder=""
             autoFocus
           />
           {error && <p className="pin-error">{error}</p>}
           <div className="pin-actions">
-            <button className="pin-submit" onClick={handleLogin} disabled={pin.length !== 4}>
-              Enter
-            </button>
             <button className="pin-back" onClick={() => { setShowPin(null); setPin(''); setError(''); }}>
-              Back
+              CANCEL
+            </button>
+            <button className="pin-submit" onClick={handleLogin} disabled={pin.length !== 4} style={{ borderColor: pin.length === 4 ? '#e50914' : '#808080', color: pin.length === 4 ? '#e50914' : '#808080' }}>
+              CONTINUE
             </button>
           </div>
         </div>
@@ -84,10 +88,13 @@ function ProfileSelect() {
     return (
       <div className="profile-page">
         <div className="profile-create-screen">
-          <h2>Create Profile</h2>
+          <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem', fontWeight: 500 }}>Add Profile</h2>
+          <p style={{ color: '#666', marginBottom: '2rem' }}>Add a profile for another person watching Netflix.</p>
+
           <div className="create-avatar-preview" style={{ background: newAvatar }}>
             {newName ? newName[0].toUpperCase() : <FaUser />}
           </div>
+
           <div className="create-avatars">
             {AVATARS.map((c) => (
               <button
@@ -98,9 +105,10 @@ function ProfileSelect() {
               />
             ))}
           </div>
+
           <input
             className="create-input"
-            placeholder="Username"
+            placeholder="Name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             autoFocus
@@ -110,17 +118,18 @@ function ProfileSelect() {
             type="password"
             inputMode="numeric"
             maxLength={4}
-            placeholder="4-digit PIN"
+            placeholder="Create PIN (4 digits)"
             value={newPin}
             onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
           />
           {error && <p className="pin-error">{error}</p>}
-          <div className="pin-actions">
-            <button className="pin-submit" onClick={handleCreate} disabled={!newName.trim() || newPin.length !== 4}>
-              Create
+
+          <div className="pin-actions" style={{ marginTop: '2rem' }}>
+            <button className="pin-submit" onClick={handleCreate} disabled={!newName.trim() || newPin.length !== 4} style={{ background: '#fff', color: '#000', borderColor: '#fff' }}>
+              CONTINUE
             </button>
             <button className="pin-back" onClick={() => { setShowCreate(false); setError(''); }}>
-              Back
+              CANCEL
             </button>
           </div>
         </div>
@@ -130,37 +139,37 @@ function ProfileSelect() {
 
   return (
     <div className="profile-page">
-      <div className="profile-top-bar">
-        <button className="profile-top-btn" onClick={fetchUsers} title="Refresh">
-          <FaSyncAlt />
-        </button>
-        <button className="profile-top-btn" onClick={() => navigate('/settings')} title="Settings">
-          <FaCog />
-        </button>
-      </div>
       <h1 className="profile-heading">Who's watching?</h1>
+
       <div className="profile-grid">
         {users.map((u) => (
           <button key={u.id} className="profile-card" onClick={() => setShowPin(u)}>
             <div className="profile-avatar" style={{ background: u.avatar }}>
+              {/* Simplistic avatar: Initials. To handle images, we'd need a robust image picker/url system */}
               {u.username[0].toUpperCase()}
             </div>
             <span className="profile-name">{u.username}</span>
           </button>
         ))}
+
         <button className="profile-card add" onClick={() => setShowCreate(true)}>
           <div className="profile-avatar add-avatar">
-            <FaPlus />
+            <FaPlus style={{ fontSize: '2rem' }} />
           </div>
           <span className="profile-name">Add Profile</span>
         </button>
       </div>
+
+      <button className="manage-profiles-btn" onClick={() => navigate('/settings')}>
+        Manage Profiles
+      </button>
+
       {!isServerConfigured() && (
-        <div className="profile-setup-banner">
-          <p className="profile-setup-msg">
-            No media server configured. Set your server URL in Settings to get started.
+        <div style={{ marginTop: '3rem', textAlign: 'center', opacity: 0.7 }}>
+          <p style={{ marginBottom: '1rem', color: '#999' }}>
+            No media server configured.
           </p>
-          <Link to="/settings" className="profile-setup-btn"><FaCog /> Go to Settings</Link>
+          <Link to="/settings" style={{ color: '#fff', textDecoration: 'underline' }}>Go to Settings</Link>
         </div>
       )}
     </div>

@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaFilm, FaCog, FaSignOutAlt, FaBell, FaTimes, FaBars, FaHome, FaVideo, FaTv, FaSearch, FaArrowLeft } from 'react-icons/fa';
+import { FaFilm, FaCog, FaSignOutAlt, FaBell, FaTimes, FaBars, FaHome, FaVideo, FaTv, FaSearch, FaArrowLeft, FaUser } from 'react-icons/fa';
 import { useUser } from '../contexts/UserContext';
 import { searchMovies, searchTvShows, getImageUrl } from '../services/tmdb';
 import './Header.css';
 
 function Header() {
-  const { currentUser, logout, getNotifications, dismissNotification } = useUser();
+  const { currentUser, users, logout, getNotifications, dismissNotification } = useUser();
   const isFiifi = currentUser?.username?.toLowerCase() === 'fiifi';
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -282,11 +282,35 @@ function Header() {
                     {currentUser.username[0].toUpperCase()}
                   </div>
                   <div className="header-user-dropdown">
+                    {/* Other Profiles */}
+                    {users && users.filter(u => u.id !== currentUser.id).map(u => (
+                      <button key={u.id} className="header-user-profile" onClick={logout}>
+                        <div className="header-profile-icon" style={{ background: u.avatar }}>
+                          {u.username[0].toUpperCase()}
+                        </div>
+                        <span className="header-profile-name">{u.username}</span>
+                      </button>
+                    ))}
+
+                    <div className="dropdown-divider" />
+
                     <Link to="/settings" className="header-user-link">
-                      <FaCog /> Settings
+                      <FaCog style={{ fontSize: '1.2em' }} /> Manage Profiles
                     </Link>
-                    <button className="header-user-link" onClick={logout}>
-                      <FaSignOutAlt /> Switch Profile
+                    <Link to="/settings" className="header-user-link secondary">
+                      <FaUser style={{ fontSize: '1.2em' }} /> Transfer Profile
+                    </Link>
+                    <Link to="/settings" className="header-user-link secondary">
+                      <FaUser style={{ fontSize: '1.2em' }} /> Account
+                    </Link>
+                    <a href="#" className="header-user-link secondary">
+                      <FaCog style={{ fontSize: '1.2em' }} /> Help Center
+                    </a>
+
+                    <div className="dropdown-divider" />
+
+                    <button className="header-user-link centered" onClick={logout}>
+                      Sign out of Netflix
                     </button>
                   </div>
                 </div>
