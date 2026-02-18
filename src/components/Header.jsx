@@ -11,6 +11,7 @@ function Header() {
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileSearchActive, setMobileSearchActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -18,6 +19,7 @@ function Header() {
   const dropdownRef = useRef(null);
   const menuRef = useRef(null);
   const searchRef = useRef(null);
+  const searchInputRef = useRef(null);
   const searchTimerRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -195,10 +197,21 @@ function Header() {
           )}
 
           {/* Centered Search */}
-          <div className="header-search-wrapper" ref={searchRef}>
+          <div className={`header-search-wrapper ${mobileSearchActive ? 'mobile-active' : ''}`} ref={searchRef}>
+            <button
+              className="mobile-search-toggle"
+              onClick={() => {
+                setMobileSearchActive(true);
+                setTimeout(() => searchInputRef.current?.focus(), 50);
+              }}
+              aria-label="Open search"
+            >
+              <FaSearch />
+            </button>
             <div className={`header-search-bar ${searchFocused ? 'focused' : ''}`}>
               <FaSearch className="header-search-icon" />
               <input
+                ref={searchInputRef}
                 type="text"
                 className="header-search-input"
                 placeholder="Search titles..."
@@ -207,6 +220,19 @@ function Header() {
                 onFocus={() => setSearchFocused(true)}
                 onKeyDown={handleSearchKeyDown}
               />
+              <button
+                className="mobile-search-close"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMobileSearchActive(false);
+                  setSearchQuery('');
+                  setSearchResults([]);
+                  setSearchFocused(false);
+                }}
+                aria-label="Close search"
+              >
+                <FaTimes />
+              </button>
             </div>
             {searchFocused && searchResults.length > 0 && (
               <div className="header-search-dropdown">
