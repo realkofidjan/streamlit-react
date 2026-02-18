@@ -46,6 +46,14 @@
   position: relative;
 }
 
+.nf-backdrop-card:focus-visible {
+  transform: scale(1.05);
+  z-index: 10;
+  outline: none;
+  box-shadow: none;
+  /* Added based on instruction */
+}
+
 .nf-filter-select {
   appearance: none;
   background: rgba(0, 0, 0, 0.4);
