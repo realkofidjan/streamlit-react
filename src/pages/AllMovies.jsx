@@ -1,17 +1,24 @@
 import { useState, useEffect } from 'react';
-import MediaCard from '../components/MediaCard';
+import ContentModal from '../components/ContentModal';
 import { getLibrary } from '../services/media';
-import { searchMovies } from '../services/tmdb';
+import { searchMovies, getImageUrl } from '../services/tmdb';
 import { cleanName, extractYear, pickBestResult } from '../utils/matchTmdb';
 import { useUser } from '../contexts/UserContext';
+import { FaCheckCircle } from 'react-icons/fa';
 import './AllMedia.css';
 
 function AllMovies() {
   const { currentUser } = useUser();
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modalContent, setModalContent] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
-  // Get watched status
+  const openModal = (item) => {
+    setModalContent({ ...item, type: 'movie' });
+    setShowModal(true);
+  };
+
   const watchHistory = currentUser?.watchHistory?.movies || {};
 
   useEffect(() => {
@@ -35,11 +42,17 @@ function AllMovies() {
           results.push(...batchResults.filter(Boolean));
         }
         const seen = new Set();
-        setMovies(results.filter((m) => {
+        const unique = results.filter((m) => {
           if (seen.has(m.id)) return false;
           seen.add(m.id);
           return true;
-        }));
+        });
+        // Shuffle for random order on each reload
+        for (let i = unique.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [unique[i], unique[j]] = [unique[j], unique[i]];
+        }
+        setMovies(unique);
       } catch {
         // ignore
       } finally {
@@ -60,21 +73,43 @@ function AllMovies() {
   return (
     <div className="all-media-page">
       <div className="container">
-        <h1 className="all-media-title">All Movies <span className="all-media-count">{movies.length}</span></h1>
+        <h1 className="all-media-title">Movies <span className="all-media-count">{movies.length}</span></h1>
 
-        {/* Use the shared Netflix grid class from SearchResults/Global CSS if possible, 
-            but for now I'll use a local class that matches the grid styles 
-            or reuse the layout from SearchResults if I move it to global. 
-            Actually, let's just use the style directly or add it to AllMedia.css 
-        */}
-        <div className="nf-grid-library">
+        <div className="nf-backdrop-grid">
           {movies.map((m) => {
-            // Check watched status using the history directly or rely on MediaCard's internal check
-            // MediaCard already checks watchHistory if we pass 'local' badge, 
-            // but let's be explicit because MediaCard logic is:
-            // if (isLocal && type === 'movie') checks history.
-            // We are passing badge="local" so it should work automatically!
-            return <MediaCard key={m.id} item={m} type="movie" badge="local" />;
+            const backdropUrl = m.backdrop_path
+              ? getImageUrl(m.backdrop_path, 'w780')
+              : (m.poster_path ? getImageUrl(m.poster_path, 'w500') : null);
+
+            const entry = watchHistory[String(m.id)];
+            const isWatched = entry && entry.progress >= 0.96;
+
+            return (
+              <div
+                key={m.id}
+                className="nf-backdrop-card"
+                onClick={() => openModal(m)}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="nf-backdrop-img">
+                  {backdropUrl ? (
+                    <img src={backdropUrl} alt={m.title} loading="lazy" />
+                  ) : (
+                    <div className="nf-backdrop-placeholder">{m.title}</div>
+                  )}
+                  <div className="nf-backdrop-gradient" />
+                  <div className="nf-backdrop-title">{m.title}</div>
+
+                  {/* Badges */}
+                  <div className="nf-backdrop-badges">
+                    {isWatched && (
+                      <span className="nf-badge nf-badge-watched"><FaCheckCircle /> Watched</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
           })}
         </div>
 
@@ -82,6 +117,8 @@ function AllMovies() {
           <p className="all-media-empty">No movies found on your drive.</p>
         )}
       </div>
+
+      <ContentModal content={modalContent} show={showModal} onClose={() => setShowModal(false)} />
     </div>
   );
 }

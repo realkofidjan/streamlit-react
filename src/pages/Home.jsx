@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import HeroBillboard from '../components/HeroSearch';
 import MediaCard from '../components/MediaCard';
+import BackdropCard from '../components/BackdropCard';
 import ContentModal from '../components/ContentModal';
 import { useUser } from '../contexts/UserContext';
 import { getLibrary } from '../services/media';
@@ -12,7 +13,7 @@ import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import './Home.css';
 
 /* ===== Scrollable Netflix Row ===== */
-function NetflixRow({ title, children, count }) {
+function NetflixRow({ title, children, count, className }) {
   const rowRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -44,7 +45,7 @@ function NetflixRow({ title, children, count }) {
         {title}
         {count != null && <span className="nf-section-count">{count}</span>}
       </h2>
-      <div className="nf-row-wrapper">
+      <div className={`nf-row-wrapper ${className || ''}`}>
         {canScrollLeft && (
           <button className="nf-row-arrow nf-row-arrow-left" onClick={() => scroll('left')}>
             <FaChevronLeft />
@@ -260,7 +261,7 @@ function Home() {
 
   return (
     <div className="home-page">
-      <HeroBillboard item={featured} type={featured?._type || 'movie'} />
+      <HeroBillboard item={featured} type={featured?._type || 'movie'} onMoreInfo={(item, type) => openModal(item, type)} />
 
       <div className="nf-rows-container">
         {continueWatching.length > 0 && (
@@ -275,15 +276,15 @@ function Home() {
                   let linkTo;
                   const t = item.currentTime ? `&t=${item.currentTime}` : '';
                   if (item.type === 'movie') {
-                    linkTo = `/movie/${item.mediaId}?autoplay=1${t}`;
+                    linkTo = `/play?type=movie&id=${item.mediaId}${t}`;
                   } else if (item.showId && item.season && item.episode) {
-                    linkTo = `/tv/${item.showId}/season/${item.season}/episode/${item.episode}?autoplay=1${t}`;
+                    linkTo = `/play?type=episode&id=${item.showId}&season=${item.season}&episode=${item.episode}${t}`;
                   } else {
                     const match = item.mediaId.match(/^(\d+)-s(\d+)e(\d+)$/);
                     if (match) {
-                      linkTo = `/tv/${match[1]}/season/${match[2]}/episode/${match[3]}?autoplay=1${t}`;
+                      linkTo = `/play?type=episode&id=${match[1]}&season=${match[2]}&episode=${match[3]}${t}`;
                     } else {
-                      linkTo = `/tv/${item.mediaId}`;
+                      linkTo = `/play?type=movie&id=${item.mediaId}`;
                     }
                   }
                   return (
@@ -306,17 +307,27 @@ function Home() {
         )}
 
         {localMovieTmdb.length > 0 && (
-          <NetflixRow title="Your Movies" count={localMovieTmdb.length}>
-            {localMovieTmdb.map((m) => (
-              <MediaCard key={m.id} item={m} type="movie" badge="local" onClick={(i) => openModal(i, 'movie')} />
-            ))}
+          <NetflixRow title="Your Movies" count={localMovieTmdb.length} className="nf-backdrop-row">
+            {localMovieTmdb.map((m) => {
+              const entry = watchHistory[String(m.id)];
+              const isWatched = entry && entry.status === 'watched'; // or progress >= 0.96
+              return (
+                <BackdropCard
+                  key={m.id}
+                  item={m}
+                  type="movie"
+                  badge={isWatched ? 'watched' : null}
+                  onClick={(i) => openModal(i, 'movie')}
+                />
+              );
+            })}
           </NetflixRow>
         )}
 
         {localTvTmdb.length > 0 && (
-          <NetflixRow title="Your TV Shows" count={localTvTmdb.length}>
+          <NetflixRow title="Your TV Shows" count={localTvTmdb.length} className="nf-backdrop-row">
             {localTvTmdb.map((s) => (
-              <MediaCard key={s.id} item={s} type="tv" badge={tvBadges[s.id] || 'local'} onClick={(i) => openModal(i, 'tv')} />
+              <BackdropCard key={s.id} item={s} type="tv" badge={tvBadges[s.id]} onClick={(i) => openModal(i, 'tv')} />
             ))}
           </NetflixRow>
         )}

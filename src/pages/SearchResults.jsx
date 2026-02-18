@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import MediaCard from '../components/MediaCard';
+import ContentModal from '../components/ContentModal';
 import { searchMovies, searchTvShows } from '../services/tmdb';
 import { searchLocalMovies, searchLocalTvShows } from '../services/media';
 import './SearchResults.css';
@@ -11,6 +12,13 @@ function SearchResults() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [localIds, setLocalIds] = useState(new Set());
+  const [modalContent, setModalContent] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+
+  const openModal = (item) => {
+    setModalContent(item);
+    setShowModal(true);
+  };
 
   // Fetch both movies and TV shows, sort by date
   useEffect(() => {
@@ -117,11 +125,14 @@ function SearchResults() {
                 item={item}
                 type={item.type}
                 badge={isLocal ? 'local' : 'cloud'}
+                onClick={() => openModal(item)}
               />
             );
           })}
         </div>
       )}
+
+      <ContentModal content={modalContent} show={showModal} onClose={() => setShowModal(false)} />
     </div>
   );
 }

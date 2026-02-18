@@ -50,7 +50,7 @@ function ProfileSelect() {
       <div className="profile-page">
         <div className="profile-pin-screen">
           <div className="profile-pin-avatar" style={{ background: showPin.avatar }}>
-            {showPin.username[0].toUpperCase()}
+            {showPin.emoji || showPin.username[0].toUpperCase()}
           </div>
           <h2 style={{ marginBottom: '1.5rem', color: '#fff' }}>{showPin.username}</h2>
           <p className="profile-pin-label">Profile Lock is on.</p>
@@ -89,7 +89,7 @@ function ProfileSelect() {
       <div className="profile-page">
         <div className="profile-create-screen">
           <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem', fontWeight: 500 }}>Add Profile</h2>
-          <p style={{ color: '#666', marginBottom: '2rem' }}>Add a profile for another person watching Netflix.</p>
+          <p style={{ color: '#666', marginBottom: '2rem' }}>Add a profile for another person watching StreamLit.</p>
 
           <div className="create-avatar-preview" style={{ background: newAvatar }}>
             {newName ? newName[0].toUpperCase() : <FaUser />}
@@ -145,23 +145,24 @@ function ProfileSelect() {
         {users.map((u) => (
           <button key={u.id} className="profile-card" onClick={() => setShowPin(u)}>
             <div className="profile-avatar" style={{ background: u.avatar }}>
-              {/* Simplistic avatar: Initials. To handle images, we'd need a robust image picker/url system */}
-              {u.username[0].toUpperCase()}
+              {u.emoji || u.username[0].toUpperCase()}
             </div>
             <span className="profile-name">{u.username}</span>
           </button>
         ))}
 
-        <button className="profile-card add" onClick={() => setShowCreate(true)}>
-          <div className="profile-avatar add-avatar">
-            <FaPlus style={{ fontSize: '2rem' }} />
-          </div>
-          <span className="profile-name">Add Profile</span>
-        </button>
+        {users.length < 6 && (
+          <button className="profile-card add" onClick={() => setShowCreate(true)}>
+            <div className="profile-avatar add-avatar">
+              <FaPlus style={{ fontSize: '2rem' }} />
+            </div>
+            <span className="profile-name">Add Profile</span>
+          </button>
+        )}
       </div>
 
       <button className="manage-profiles-btn" onClick={() => navigate('/settings')}>
-        Manage Profiles
+        Settings
       </button>
 
       {!isServerConfigured() && (

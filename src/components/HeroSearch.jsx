@@ -3,7 +3,7 @@ import { FaPlay, FaInfoCircle } from 'react-icons/fa';
 import { getImageUrl } from '../services/tmdb';
 import './HeroSearch.css';
 
-function HeroBillboard({ item, type }) {
+function HeroBillboard({ item, type, onMoreInfo }) {
   const navigate = useNavigate();
 
   if (!item) return <div className="billboard-placeholder" />;
@@ -13,7 +13,21 @@ function HeroBillboard({ item, type }) {
     ? item.overview.slice(0, 200) + '…'
     : item.overview;
   const backdrop = getImageUrl(item.backdrop_path, 'original');
-  const detailPath = type === 'movie' ? `/movie/${item.id}` : `/tv/${item.id}`;
+
+  const handlePlay = () => {
+    if (type === 'movie') {
+      navigate(`/play?type=movie&id=${item.id}`);
+    } else {
+      // For TV shows, play first episode — More Info is better for browsing episodes
+      navigate(`/play?type=episode&id=${item.id}&season=1&episode=1`);
+    }
+  };
+
+  const handleMoreInfo = () => {
+    if (onMoreInfo) {
+      onMoreInfo(item, type);
+    }
+  };
 
   return (
     <section className="billboard">
@@ -34,13 +48,13 @@ function HeroBillboard({ item, type }) {
         <div className="billboard-actions">
           <button
             className="billboard-btn billboard-btn-play"
-            onClick={() => navigate(`${detailPath}?autoplay=1`)}
+            onClick={handlePlay}
           >
             <FaPlay /> Play
           </button>
           <button
             className="billboard-btn billboard-btn-info"
-            onClick={() => navigate(detailPath)}
+            onClick={handleMoreInfo}
           >
             <FaInfoCircle /> More Info
           </button>

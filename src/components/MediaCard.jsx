@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { FaHdd, FaCloud, FaCheckCircle } from 'react-icons/fa';
 import { getImageUrl } from '../services/tmdb';
 import { useUser } from '../contexts/UserContext';
@@ -22,18 +21,14 @@ function MediaCard({ item, type, badge, onClick }) {
   }
 
   const title = type === 'movie' ? item.title : item.name;
-  const link = type === 'movie' ? `/movie/${item.id}` : `/tv/${item.id}`;
   const posterUrl = getImageUrl(item.poster_path, 'w342');
 
-  const handleClick = (e) => {
-    if (onClick) {
-      e.preventDefault();
-      onClick(item);
-    }
+  const handleClick = () => {
+    if (onClick) onClick(item);
   };
 
   return (
-    <Link to={link} className="nf-card" onClick={handleClick}>
+    <div className="nf-card" onClick={handleClick} role="button" tabIndex={0}>
       <div className="nf-card-img">
         {posterUrl ? (
           <img src={posterUrl} alt={title} loading="lazy" />
@@ -65,7 +60,7 @@ function MediaCard({ item, type, badge, onClick }) {
           <span className="nf-card-title">{title}</span>
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
 

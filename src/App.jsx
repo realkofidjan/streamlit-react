@@ -1,19 +1,15 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { UserProvider, useUser } from './contexts/UserContext';
-import useDpad from './hooks/useDpad';
 import ServerAlert from './components/ServerAlert';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ProfileSelect from './pages/ProfileSelect';
 import Home from './pages/Home';
-import MovieDetail from './pages/MovieDetail';
-import TvShowDetail from './pages/TvShowDetail';
-import TvSeasonDetail from './pages/TvSeasonDetail';
-// import TvEpisodeDetail from './pages/TvEpisodeDetail';
 import SearchResults from './pages/SearchResults';
 import AllMovies from './pages/AllMovies';
 import AllTvShows from './pages/AllTvShows';
+import Player from './pages/Player';
 import Settings from './pages/Settings';
 import './App.css';
 
@@ -59,11 +55,8 @@ function AnimatedRoutes() {
         <Route path="/" element={<AuthGuard><PageWrapper><Home /></PageWrapper></AuthGuard>} />
         <Route path="/movies" element={<AuthGuard><PageWrapper><AllMovies /></PageWrapper></AuthGuard>} />
         <Route path="/tv-shows" element={<AuthGuard><PageWrapper><AllTvShows /></PageWrapper></AuthGuard>} />
-        <Route path="/movie/:id" element={<AuthGuard><PageWrapper><MovieDetail /></PageWrapper></AuthGuard>} />
-        <Route path="/tv/:id" element={<AuthGuard><PageWrapper><TvShowDetail /></PageWrapper></AuthGuard>} />
-        <Route path="/tv/:id/season/:seasonNumber" element={<AuthGuard><PageWrapper><TvSeasonDetail /></PageWrapper></AuthGuard>} />
-        {/* <Route path="/tv/:id/season/:seasonNumber/episode/:episodeNumber" element={<AuthGuard><PageWrapper><TvEpisodeDetail /></PageWrapper></AuthGuard>} /> */}
         <Route path="/search" element={<AuthGuard><PageWrapper><SearchResults /></PageWrapper></AuthGuard>} />
+        <Route path="/play" element={<AuthGuard><Player /></AuthGuard>} />
         <Route path="/settings" element={<PageWrapper><Settings /></PageWrapper>} />
       </Routes>
     </AnimatePresence>
@@ -72,7 +65,7 @@ function AnimatedRoutes() {
 
 function AppRoutes() {
   const { currentUser } = useUser();
-  useDpad();
+
 
   return (
     <>

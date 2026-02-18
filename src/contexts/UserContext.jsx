@@ -138,12 +138,21 @@ export function UserProvider({ children }) {
     await fetchUsers();
   };
 
-  const updateProfile = async (username, currentPin, newPin) => {
+  // Admin can delete any user without their PIN
+  const adminDeleteUser = async (targetUserId) => {
+    if (!currentUser) return;
+    await api().delete(`/api/users/${targetUserId}`, { data: { adminId: currentUser.id } });
+    await fetchUsers();
+  };
+
+  const updateProfile = async (username, currentPin, newPin, emoji, avatar) => {
     if (!currentUser) return;
     const res = await api().put(`/api/users/${currentUser.id}/profile`, {
       username: username || undefined,
       currentPin: currentPin || undefined,
       newPin: newPin || undefined,
+      emoji: emoji !== undefined ? emoji : undefined,
+      avatar: avatar || undefined,
     });
     setCurrentUser((prev) => ({ ...prev, ...res.data }));
     await fetchUsers();
@@ -187,7 +196,7 @@ export function UserProvider({ children }) {
   return (
     <UserContext.Provider value={{
       users, currentUser, loading,
-      createUser, login, logout, deleteUser,
+      createUser, login, logout, deleteUser, adminDeleteUser,
       updateWatchHistory, clearContinueWatching, refreshHistory, fetchUsers,
       addToWatchlist, removeFromWatchlist,
       updateProfile, sendNotification, getNotifications, dismissNotification,

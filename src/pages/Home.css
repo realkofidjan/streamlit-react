@@ -54,6 +54,7 @@
   display: flex;
   gap: 0.5rem;
   overflow-x: auto;
+  overflow-y: hidden;
   padding: 0.5rem 4%;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
@@ -67,6 +68,12 @@
 .nf-row>* {
   flex-shrink: 0;
   width: 170px;
+}
+
+.nf-backdrop-row .nf-row>* {
+  width: 280px;
+  aspect-ratio: 16 / 9;
+
 }
 
 /* ===== Scroll Arrows ===== */
@@ -148,10 +155,6 @@
   transform: scale(1.08);
 }
 
-body[data-dpad-mode] .continue-card:focus-visible {
-  transform: scale(1.1);
-  box-shadow: 0 0 0 4px var(--primary), 0 0 20px rgba(229, 9, 20, 0.4);
-}
 
 .continue-card img {
   width: 100%;
@@ -219,10 +222,6 @@ body[data-dpad-mode] .continue-card:focus-visible {
   outline: none !important;
 }
 
-body[data-dpad-mode] .offline-card:focus-visible {
-  transform: scale(1.1);
-  box-shadow: 0 0 0 4px var(--primary), 0 0 20px rgba(229, 9, 20, 0.4);
-}
 
 .offline-card img {
   width: 100%;

@@ -178,13 +178,16 @@ app.post('/api/users', (req, res) => {
   const { username, pin, avatar } = req.body;
   if (!username || !pin) return res.status(400).json({ error: 'Username and PIN required' });
   const users = readUsers();
+  if (users.length >= 6) return res.status(400).json({ error: 'Maximum of 6 profiles reached' });
   const user = {
     id: crypto.randomUUID(),
     username,
     pin: String(pin),
     avatar: avatar || 'red',
+    emoji: null,
     watchHistory: { movies: {}, episodes: {} },
     watchlist: { movies: {}, shows: {} },
+    createdAt: new Date().toISOString(),
   };
   users.push(user);
   writeUsers(users);
@@ -283,8 +286,19 @@ app.delete('/api/users/:id', (req, res) => {
   const users = readUsers();
   const index = users.findIndex((u) => u.id === req.params.id);
   if (index === -1) return res.status(404).json({ error: 'User not found' });
-  const { pin } = req.body || {};
-  if (users[index].pin !== String(pin)) return res.status(401).json({ error: 'Invalid PIN' });
+  const { pin, adminId } = req.body || {};
+
+  // Admin delete: Fiifi can delete any user without their PIN
+  if (adminId) {
+    const admin = users.find((u) => u.id === adminId);
+    if (!admin || admin.username.toLowerCase() !== 'fiifi') {
+      return res.status(403).json({ error: 'Only admin can delete other users' });
+    }
+  } else {
+    // Self-delete: requires own PIN
+    if (users[index].pin !== String(pin)) return res.status(401).json({ error: 'Invalid PIN' });
+  }
+
   users.splice(index, 1);
   writeUsers(users);
   res.json({ success: true });
@@ -293,12 +307,14 @@ app.delete('/api/users/:id', (req, res) => {
 // ========== PROFILE ==========
 
 app.put('/api/users/:id/profile', (req, res) => {
-  const { username, currentPin, newPin } = req.body;
+  const { username, currentPin, newPin, emoji, avatar } = req.body;
   const users = readUsers();
   const user = users.find((u) => u.id === req.params.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
   if (username) user.username = username;
+  if (emoji !== undefined) user.emoji = emoji || null;
+  if (avatar) user.avatar = avatar;
   if (currentPin && newPin) {
     if (user.pin !== String(currentPin)) return res.status(401).json({ error: 'Current PIN is incorrect' });
     user.pin = String(newPin);
@@ -518,7 +534,7 @@ app.post('/api/download/movie', (req, res) => {
   const targetName = `${title} (${year || 'Unknown'})`;
   // Use first movies dir as default download target
   const targetDir = MOVIES_DIRS[0] || '/tmp';
-  const item = { type: 'movie', targetName, targetDir, url: `https://mapple.mov/watch/movie/${tmdbId}`, status: 'queued' };
+  const item = { type: 'movie', targetName, targetDir, url: `https://vidfast.pro/movie/${tmdbId}`, status: 'queued' };
   downloadQueue.push(item);
   processQueue();
   res.json({ ok: true, message: `Will be saved as: ${targetName}`, queue: downloadQueue.length });
@@ -541,7 +557,7 @@ app.post('/api/download/episode', (req, res) => {
     : path.join(TV_DIRS[0] || '/tmp', showName, `Season ${season}`);
   if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
 
-  const item = { type: 'episode', targetName, targetDir, url: `https://mapple.mov/watch/tv/${tmdbId}-${season}-${episode}`, status: 'queued' };
+  const item = { type: 'episode', targetName, targetDir, url: `https://vidfast.pro/tv/${tmdbId}/${season}/${episode}`, status: 'queued' };
   downloadQueue.push(item);
   processQueue();
   res.json({ ok: true, message: `Will be saved as: ${showName}/Season ${season}/${targetName}`, queue: downloadQueue.length });

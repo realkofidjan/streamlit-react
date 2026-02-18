@@ -163,8 +163,8 @@ function Header() {
   };
 
   const goToResult = (r) => {
-    const path = r.type === 'movie' ? `/movie/${r.id}` : `/tv/${r.id}`;
-    navigate(path);
+    const title = r.type === 'movie' ? r.title : r.name;
+    navigate(`/search?query=${encodeURIComponent(title)}`);
     setSearchQuery('');
     setSearchResults([]);
     setSearchFocused(false);
@@ -238,7 +238,7 @@ function Header() {
 
           {/* Right: Controls */}
           <div className="nav-links-right nav-desktop">
-            {isFiifi && (
+            {currentUser && (
               <div className="notif-wrapper" ref={dropdownRef}>
                 <button
                   className="notif-bell"
@@ -279,14 +279,14 @@ function Header() {
               <div className="header-user-menu">
                 <div className="header-user">
                   <div className="header-avatar" style={{ background: currentUser.avatar }}>
-                    {currentUser.username[0].toUpperCase()}
+                    {currentUser.emoji || currentUser.username[0].toUpperCase()}
                   </div>
                   <div className="header-user-dropdown">
                     {/* Other Profiles */}
                     {users && users.filter(u => u.id !== currentUser.id).map(u => (
-                      <button key={u.id} className="header-user-profile" onClick={logout}>
+                      <button key={u.id} className="header-user-profile" onClick={() => { logout(); navigate('/'); }}>
                         <div className="header-profile-icon" style={{ background: u.avatar }}>
-                          {u.username[0].toUpperCase()}
+                          {u.emoji || u.username[0].toUpperCase()}
                         </div>
                         <span className="header-profile-name">{u.username}</span>
                       </button>
@@ -298,19 +298,13 @@ function Header() {
                       <FaCog style={{ fontSize: '1.2em' }} /> Manage Profiles
                     </Link>
                     <Link to="/settings" className="header-user-link secondary">
-                      <FaUser style={{ fontSize: '1.2em' }} /> Transfer Profile
-                    </Link>
-                    <Link to="/settings" className="header-user-link secondary">
                       <FaUser style={{ fontSize: '1.2em' }} /> Account
                     </Link>
-                    <a href="#" className="header-user-link secondary">
-                      <FaCog style={{ fontSize: '1.2em' }} /> Help Center
-                    </a>
 
                     <div className="dropdown-divider" />
 
                     <button className="header-user-link centered" onClick={logout}>
-                      Sign out of Netflix
+                      Sign out of StreamLit
                     </button>
                   </div>
                 </div>
@@ -330,7 +324,7 @@ function Header() {
         {currentUser && (
           <div className="mobile-menu-profile">
             <div className="mobile-menu-avatar" style={{ background: currentUser.avatar }}>
-              {currentUser.username[0].toUpperCase()}
+              {currentUser.emoji || currentUser.username[0].toUpperCase()}
             </div>
             <span className="mobile-menu-username">{currentUser.username}</span>
           </div>
@@ -345,7 +339,7 @@ function Header() {
           <Link to="/tv-shows" className="mobile-menu-link">
             <FaTv /> TV Shows
           </Link>
-          {isFiifi && (
+          {currentUser && (
             <button
               className="mobile-menu-link"
               onClick={() => { setShowDropdown((p) => !p); setMobileMenuOpen(false); }}

@@ -1,5 +1,5 @@
-/* ===== Player Container ===== */
-.vp-player {
+/* ===== Netflix Player ===== */
+.nfp-player {
   position: fixed;
   inset: 0;
   z-index: 9999;
@@ -10,19 +10,19 @@
   cursor: default;
 }
 
-.vp-video {
+.nfp-video {
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
-.vp-video-area {
+.nfp-video-area {
   position: absolute;
-  inset: 60px 0 80px 0;
+  inset: 50px 0 60px 0;
 }
 
 /* ===== Buffering ===== */
-.vp-buffering {
+.nfp-buffering {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -30,483 +30,610 @@
   pointer-events: none;
 }
 
-.vp-buffering-spinner {
+.nfp-buffering-spinner {
   width: 48px;
   height: 48px;
   border: 3px solid rgba(255, 255, 255, 0.2);
-  border-top-color: white;
+  border-top-color: #e50914;
   border-radius: 50%;
-  animation: vp-spin 0.8s linear infinite;
+  animation: nfp-spin 0.8s linear infinite;
 }
 
-@keyframes vp-spin {
-  to { transform: rotate(360deg); }
+@keyframes nfp-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-/* ===== Center Play ===== */
-.vp-center-play {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: rgba(17, 17, 17, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s;
-  z-index: 5;
-}
-
-.vp-center-play:hover {
-  background: rgba(17, 17, 17, 0.8);
-}
-
-/* ===== Top Bar ===== */
-.vp-top-bar {
+/* ===== TOP BAR ===== */
+.nfp-top-bar {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  padding: 1rem 1.5rem;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent);
   z-index: 10;
 }
 
-.vp-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: white;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ===== Icon Button ===== */
-.vp-icon-btn {
-  display: inline-flex;
+.nfp-back-btn {
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
   border: none;
-  background: transparent;
+  background: none;
   color: white;
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
+  transition: opacity 0.2s;
 }
 
-.vp-icon-btn:hover,
-.vp-icon-btn:focus-visible {
-  background: rgba(17, 17, 17, 0.8);
+.nfp-back-btn:hover {
+  opacity: 0.7;
 }
 
-.vp-icon-btn:focus-visible {
-  outline: 2px solid white;
-  outline-offset: 2px;
+.nfp-flag-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: none;
+  color: white;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
 }
 
-.vp-icon-btn:active {
-  transform: scale(0.9);
+.nfp-flag-btn:hover {
+  opacity: 1;
 }
 
-.vp-icon-btn.active {
-  background: rgba(17, 17, 17, 0.8);
-}
-
-/* ===== Bottom Panel — Frosted Glass ===== */
-.vp-bottom-panel {
+/* ===== BOTTOM CONTROLS ===== */
+.nfp-bottom {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  max-width: 640px;
-  margin: 0 auto 12px;
-  padding: 14px 20px;
-  background: rgba(17, 17, 17, 0.6);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 16px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+  padding: 0 16px 10px;
   z-index: 10;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
 }
 
-/* ===== Progress Row ===== */
-.vp-progress-row {
+/* ===== Progress Bar ===== */
+.nfp-progress-wrap {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 6px;
 }
 
-.vp-time {
-  font-size: 0.8rem;
-  color: white;
-  font-variant-numeric: tabular-nums;
-  min-width: 40px;
-  text-align: center;
-}
-
-.vp-progress-bar {
+.nfp-progress-bar {
   position: relative;
   flex: 1;
-  height: 4px;
+  height: 3px;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
   cursor: pointer;
   overflow: visible;
   transition: height 0.15s;
 }
 
-.vp-progress-bar:hover {
-  height: 6px;
+.nfp-progress-bar:hover {
+  height: 5px;
 }
 
-.vp-progress-buffered {
+.nfp-progress-buffered {
   position: absolute;
   top: 0;
   left: 0;
   height: 100%;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
 }
 
-.vp-progress-played {
+.nfp-progress-played {
   position: absolute;
   top: 0;
   left: 0;
   height: 100%;
-  background: white;
-  border-radius: 2px;
+  background: #e50914;
 }
 
-.vp-progress-thumb {
+.nfp-progress-thumb {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%) scale(0);
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: white;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  background: #e50914;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
   transition: transform 0.15s;
 }
 
-.vp-progress-bar:hover .vp-progress-thumb {
+.nfp-progress-bar:hover .nfp-progress-thumb {
   transform: translate(-50%, -50%) scale(1);
 }
 
-/* ===== Controls Row ===== */
-.vp-controls-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.vp-controls-left,
-.vp-controls-right {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* ===== Volume ===== */
-.vp-volume-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.vp-volume-slider {
-  width: 80px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
-  cursor: pointer;
-  position: relative;
-}
-
-.vp-volume-fill {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  background: white;
-  border-radius: 2px;
-}
-
-/* ===== Speed Buttons ===== */
-.vp-speed-group {
-  display: flex;
-  gap: 2px;
-}
-
-.vp-speed-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 36px;
-  height: 32px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.vp-speed-btn:hover {
-  color: white;
-  background: rgba(17, 17, 17, 0.8);
-}
-
-.vp-speed-btn.active {
-  color: white;
-  background: rgba(17, 17, 17, 0.8);
-}
-
-/* ===== Episode List Sidebar ===== */
-.vp-episodes-panel {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 360px;
-  max-width: 85vw;
-  background: rgba(17, 17, 17, 0.92);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  display: flex;
-  flex-direction: column;
-  z-index: 10;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.vp-episodes-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.vp-episodes-header h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: white;
-}
-
-/* ===== Season Selector ===== */
-.vp-season-select {
-  position: relative;
-  padding: 0.75rem 1.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.vp-season-select select {
-  width: 100%;
-  appearance: none;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  color: white;
-  padding: 0.5rem 2rem 0.5rem 0.75rem;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.vp-season-select select:focus {
-  outline: none;
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-.vp-select-icon {
-  position: absolute;
-  right: 2rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.5);
-  pointer-events: none;
-}
-
-/* ===== Episode List ===== */
-.vp-episodes-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0.5rem;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-}
-
-.vp-episode-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.5rem;
-  border: none;
-  background: transparent;
-  border-radius: 10px;
-  cursor: pointer;
-  text-align: left;
-  color: white;
-  transition: background 0.15s;
-}
-
-.vp-episode-item:hover:not(:disabled),
-.vp-episode-item:focus-visible:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.vp-episode-item:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: -2px;
-}
-
-.vp-episode-item:disabled {
-  cursor: default;
-}
-
-.vp-episode-item.current {
-  background: rgba(229, 9, 20, 0.15);
-  border: 1px solid rgba(229, 9, 20, 0.3);
-}
-
-.vp-episode-thumb {
-  flex-shrink: 0;
-  width: 96px;
-  height: 54px;
-  border-radius: 6px;
-  overflow: hidden;
-  position: relative;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.vp-episode-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.vp-episode-no-thumb {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.vp-now-playing-badge {
-  position: absolute;
-  bottom: 2px;
-  left: 2px;
-  right: 2px;
-  background: rgba(229, 9, 20, 0.85);
-  color: white;
-  font-size: 0.6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  text-align: center;
-  padding: 2px 0;
-  border-radius: 3px;
-}
-
-.vp-episode-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.vp-episode-num {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.4);
-  font-weight: 600;
-}
-
-.vp-episode-name {
+.nfp-time-remaining {
   font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ===== Controls Row ===== */
+.nfp-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+}
+
+.nfp-controls-left,
+.nfp-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.nfp-controls-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 0 12px;
+  min-width: 0;
+}
+
+.nfp-controls-title {
+  font-size: 0.85rem;
   font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.vp-episode-runtime {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.35);
-}
-
-.vp-episode-play-icon {
-  flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.vp-episode-item:hover .vp-episode-play-icon {
+/* ===== Control Buttons ===== */
+.nfp-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: none;
   color: white;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  padding: 0;
+  position: relative;
+}
+
+.nfp-ctrl-btn:hover {
+  opacity: 0.7;
+}
+
+.nfp-ctrl-btn:active {
+  transform: scale(0.9);
+}
+
+.nfp-ctrl-btn.active {
+  color: #e50914;
+}
+
+.nfp-ctrl-pipe {
+  position: absolute;
+  right: -2px;
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: 100;
+}
+
+/* ===== Volume ===== */
+.nfp-volume-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nfp-volume-slider {
+  width: 70px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  position: relative;
+}
+
+.nfp-volume-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: white;
+}
+
+/* ===== PAUSED INFO OVERLAY ===== */
+.nfp-paused-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  cursor: pointer;
+}
+
+.nfp-paused-info {
+  position: absolute;
+  left: 5%;
+  bottom: 30%;
+  max-width: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nfp-paused-label {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 400;
+  margin-bottom: 4px;
+}
+
+.nfp-paused-show {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.1;
+  margin: 0 0 2px;
+}
+
+.nfp-paused-season {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.nfp-paused-ep {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 8px;
+}
+
+.nfp-paused-desc {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+  max-width: 500px;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+}
+
+.nfp-paused-tag {
+  position: absolute;
+  bottom: 10%;
+  right: 5%;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 400;
+}
+
+/* ===== NEXT EPISODE OVERLAY ===== */
+.nfp-next-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 80px;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.7) 60%, rgba(0, 0, 0, 0.85) 100%);
+}
+
+.nfp-next-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  max-width: 320px;
+}
+
+.nfp-next-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.nfp-next-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: white;
+  text-align: right;
+  line-height: 1.3;
+}
+
+.nfp-next-ep-title {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: right;
+}
+
+.nfp-next-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.nfp-next-play-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: #fff;
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.nfp-next-play-btn:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.nfp-next-cancel-btn {
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nfp-next-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #fff;
+}
+
+.nfp-next-countdown {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.nfp-countdown-ring {
+  position: relative;
+  width: 44px;
+  height: 44px;
+}
+
+.nfp-countdown-ring svg {
+  width: 100%;
+  height: 100%;
+}
+
+.nfp-countdown-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: white;
+}
+
+/* ===== NEW EPISODE LIST SIDEBAR ===== */
+.nfp-episodes-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 400px;
+  max-width: 90vw;
+  background: #181818;
+  display: flex;
+  flex-direction: column;
+  z-index: 25;
+  box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.nfp-episodes-header {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 1rem 1.25rem;
+  border-bottom: 2px solid white;
+  margin-bottom: 0px;
+}
+
+.nfp-episodes-back-btn {
+  background: none;
+  border: none;
+  color: white;
+  padding: 0;
+  margin-right: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.nfp-episodes-back-btn:hover {
+  opacity: 0.7;
+}
+
+.nfp-season-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.nfp-season-select-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+}
+
+.nfp-season-select-label {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: white;
+}
+
+.nfp-season-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: white;
+}
+
+.nfp-episodes-list {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #555 #181818;
+}
+
+.nfp-episode-row {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.nfp-episode-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+  /* slightly lighter on hover */
+}
+
+.nfp-episode-row.active {
+  background: #181818;
+  padding-bottom: 1rem;
+}
+
+/* Top Row within item: Index | Title | Progress */
+.nfp-ep-top {
+  display: flex;
+  align-items: center;
+  padding: 1.25rem 1.25rem;
+  min-height: 60px;
+  position: relative;
+}
+
+.nfp-ep-num {
+  font-size: 1.2rem;
+  color: #999;
+  font-weight: 500;
+  width: 40px;
+  flex-shrink: 0;
+  text-align: center;
+  margin-right: 5px;
+}
+
+.nfp-ep-title {
+  font-size: 1rem;
+  color: white;
+  font-weight: 500;
+  margin-right: 10px;
+}
+
+.nfp-episode-row.active .nfp-ep-title {
+  font-weight: 700;
+}
+
+/* Progress bar on the right */
+.nfp-ep-progress-track {
+  margin-left: auto;
+  /* Push to right */
+  width: 80px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.nfp-ep-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: #e50914;
+}
+
+/* Details Row (Expanded) */
+.nfp-ep-details {
+  display: flex;
+  gap: 15px;
+  padding: 0 1.5rem 0 4rem;
+  /* Indent to align with title somewhat, 40px numb + margin */
+}
+
+.nfp-ep-thumb {
+  flex-shrink: 0;
+  width: 130px;
+  aspect-ratio: 16/9;
+  background: #333;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.nfp-ep-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nfp-ep-no-thumb {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #777;
+  font-size: 0.8rem;
+}
+
+.nfp-ep-overview {
+  flex: 1;
+  font-size: 0.85rem;
+  color: #ccc;
+  line-height: 1.4;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* ===== Responsive ===== */
 @media (max-width: 640px) {
-  .vp-bottom-panel {
-    margin: 0 8px 8px;
-    padding: 10px 14px;
-    border-radius: 12px;
-  }
-
-  .vp-speed-group {
-    display: none;
-  }
-
-  .vp-episodes-panel {
+  .nfp-episodes-panel {
     width: 100%;
     max-width: 100vw;
-  }
-
-  .vp-top-bar {
-    padding: 0.75rem 1rem;
-  }
-
-  .vp-title {
-    font-size: 0.9rem;
-  }
-
-  .vp-volume-slider {
-    width: 50px;
-  }
-
-  .vp-center-play {
-    width: 60px;
-    height: 60px;
-  }
-
-  .vp-video-area {
-    inset: 50px 0 70px 0;
-  }
-}
-
-@media (max-width: 400px) {
-  .vp-volume-group {
-    display: none;
-  }
-
-  .vp-bottom-panel {
-    margin: 0 4px 4px;
-    padding: 8px 10px;
   }
 }
