@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { FaFilm, FaCog, FaSignOutAlt, FaBell, FaTimes, FaBars, FaHome, FaVideo, FaTv } from 'react-icons/fa';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { FaFilm, FaCog, FaSignOutAlt, FaBell, FaTimes, FaBars, FaHome, FaVideo, FaTv, FaSearch } from 'react-icons/fa';
 import { useUser } from '../contexts/UserContext';
 import './Header.css';
 
@@ -10,9 +10,21 @@ function Header() {
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef(null);
   const menuRef = useRef(null);
+  const searchInputRef = useRef(null);
   const location = useLocation();
+  const navigate = useNavigate();
+  const [scrolled, setScrolled] = useState(false);
+
+  // Header background on scroll
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -71,7 +83,7 @@ function Header() {
 
   return (
     <>
-      <header className="header">
+      <header className={`header${scrolled ? ' scrolled' : ''}`}>
         <div className="header-container">
           <Link to="/" className="logo">
             <FaFilm className="logo-icon" />
@@ -84,6 +96,41 @@ function Header() {
             <Link to="/">Home</Link>
             <Link to="/movies">Movies</Link>
             <Link to="/tv-shows">TV Shows</Link>
+            <div className={`header-search ${searchOpen ? 'open' : ''}`}>
+              <button
+                className="header-search-icon"
+                onClick={() => {
+                  setSearchOpen(true);
+                  setTimeout(() => searchInputRef.current?.focus(), 100);
+                }}
+              >
+                <FaSearch />
+              </button>
+              {searchOpen && (
+                <input
+                  ref={searchInputRef}
+                  className="header-search-input"
+                  type="text"
+                  placeholder="Titles, people, genres"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && searchQuery.trim()) {
+                      navigate(`/search?type=movie&query=${encodeURIComponent(searchQuery.trim())}`);
+                      setSearchOpen(false);
+                      setSearchQuery('');
+                    }
+                    if (e.key === 'Escape') {
+                      setSearchOpen(false);
+                      setSearchQuery('');
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!searchQuery) setSearchOpen(false);
+                  }}
+                />
+              )}
+            </div>
             {isFiifi && (
               <div className="notif-wrapper" ref={dropdownRef}>
                 <button

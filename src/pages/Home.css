@@ -1,124 +1,155 @@
-.section-header-row {
+/* ===== Netflix-Style Home ===== */
+.home-page {
+  background: #141414;
+  min-height: 100vh;
+}
+
+.nf-rows-container {
+  position: relative;
+  z-index: 3;
+  margin-top: -12vh;
+  padding-bottom: 4rem;
+}
+
+/* ===== Section ===== */
+.nf-section {
+  margin-bottom: 2rem;
+}
+
+.nf-section-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 0 4%;
+  margin-bottom: 0.5rem;
 }
 
+.nf-section-title {
+  font-size: clamp(1.1rem, 1.5vw, 1.4rem);
+  font-weight: 700;
+  color: #e5e5e5;
+  padding: 0 4%;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nf-section-header-row .nf-section-title {
+  padding: 0;
+}
+
+.nf-section-count {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #999;
+}
+
+/* ===== Row ===== */
+.nf-row-wrapper {
+  position: relative;
+}
+
+.nf-row {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.5rem 4%;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.nf-row::-webkit-scrollbar {
+  display: none;
+}
+
+.nf-row>* {
+  flex-shrink: 0;
+  width: 170px;
+}
+
+/* ===== Scroll Arrows ===== */
+.nf-row-arrow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3.5rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 20, 20, 0.7);
+  color: #fff;
+  font-size: 1.5rem;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.nf-row-wrapper:hover .nf-row-arrow {
+  opacity: 1;
+}
+
+.nf-row-arrow-left {
+  left: 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.nf-row-arrow-right {
+  right: 0;
+  border-radius: 4px 0 0 4px;
+}
+
+.nf-row-arrow:hover {
+  background: rgba(20, 20, 20, 0.9);
+}
+
+/* ===== Clear Watching Button ===== */
 .clear-watching-btn {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.12);
   border: none;
   color: #ef4444;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  padding: 0.35rem 0.85rem;
-  border-radius: 20px;
+  padding: 0.3rem 0.75rem;
+  border-radius: 3px;
   cursor: pointer;
   transition: all 0.2s;
-  letter-spacing: 0.02em;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .clear-watching-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.25);
   color: #f87171;
 }
 
-.section-count {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  font-weight: 400;
-}
-
-.carousel-row {
-  display: flex;
-  gap: 1rem;
-  overflow-x: auto;
-  padding-bottom: 0.75rem;
-  scrollbar-width: thin;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-}
-
-.carousel-row::-webkit-scrollbar {
-  height: 4px;
-}
-
-.carousel-row::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.carousel-row::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
-}
-
-.carousel-row > * {
-  flex-shrink: 0;
-  width: 160px;
-  scroll-snap-align: start;
-}
-
-@media (max-width: 768px) {
-  .carousel-row > * {
-    width: 140px;
-  }
-
-  .continue-card {
-    width: 140px;
-  }
-
-  .offline-card {
-    width: 140px;
-  }
-}
-
-@media (max-width: 480px) {
-  .carousel-row > * {
-    width: 120px;
-  }
-
-  .carousel-row {
-    gap: 0.75rem;
-  }
-
-  .continue-card {
-    width: 120px;
-  }
-
-  .offline-card {
-    width: 120px;
-  }
-}
-
-.continue-row {
-  display: flex;
-  gap: 1rem;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
-  scrollbar-width: thin;
-}
-
+/* ===== Continue Watching Cards ===== */
 .continue-card {
   flex-shrink: 0;
-  width: 160px;
+  width: 170px;
   position: relative;
-  border-radius: 8px;
+  border-radius: 4px;
   overflow: hidden;
-  transition: transform 0.2s;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
-.continue-card:hover,
-.continue-card:focus-visible {
-  transform: scale(1.05);
+.continue-card:hover {
+  transform: scale(1.08);
+  z-index: 5;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
 .continue-card:focus-visible {
   box-shadow: 0 0 0 3px var(--primary);
   outline: none !important;
+  transform: scale(1.08);
 }
 
 body[data-dpad-mode] .continue-card:focus-visible {
-  transform: scale(1.08);
+  transform: scale(1.1);
   box-shadow: 0 0 0 4px var(--primary), 0 0 20px rgba(229, 9, 20, 0.4);
 }
 
@@ -131,14 +162,14 @@ body[data-dpad-mode] .continue-card:focus-visible {
 .continue-no-img {
   width: 100%;
   aspect-ratio: 2/3;
-  background: var(--bg-card);
+  background: #2a2a2a;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0.5rem;
   text-align: center;
   font-size: 0.8rem;
-  color: var(--text-muted);
+  color: #999;
 }
 
 .continue-progress {
@@ -152,33 +183,35 @@ body[data-dpad-mode] .continue-card:focus-visible {
 
 .continue-bar {
   height: 100%;
-  background: var(--primary);
+  background: #e50914;
+  border-radius: 0 2px 2px 0;
 }
 
 .continue-title {
   display: block;
-  padding: 0.25rem 0;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
+  padding: 0.3rem 0.25rem 0.1rem;
+  font-size: 0.78rem;
+  color: #b3b3b3;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Offline saved cards */
+/* ===== Offline Cards ===== */
 .offline-card {
   flex-shrink: 0;
-  width: 160px;
+  width: 170px;
   position: relative;
-  border-radius: 8px;
+  border-radius: 4px;
   overflow: hidden;
-  transition: transform 0.2s;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
   text-decoration: none;
 }
 
-.offline-card:hover,
-.offline-card:focus-visible {
-  transform: scale(1.05);
+.offline-card:hover {
+  transform: scale(1.08);
+  z-index: 5;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
 .offline-card:focus-visible {
@@ -187,7 +220,7 @@ body[data-dpad-mode] .continue-card:focus-visible {
 }
 
 body[data-dpad-mode] .offline-card:focus-visible {
-  transform: scale(1.08);
+  transform: scale(1.1);
   box-shadow: 0 0 0 4px var(--primary), 0 0 20px rgba(229, 9, 20, 0.4);
 }
 
@@ -195,28 +228,28 @@ body[data-dpad-mode] .offline-card:focus-visible {
   width: 100%;
   aspect-ratio: 2/3;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 
 .offline-no-img {
   width: 100%;
   aspect-ratio: 2/3;
-  background: var(--bg-card);
+  background: #2a2a2a;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0.5rem;
   text-align: center;
   font-size: 0.8rem;
-  color: var(--text-muted);
-  border-radius: 8px;
+  color: #999;
+  border-radius: 4px;
 }
 
 .offline-card-title {
   display: block;
-  padding: 0.25rem 0 0;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
+  padding: 0.3rem 0 0;
+  font-size: 0.78rem;
+  color: #b3b3b3;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -224,6 +257,69 @@ body[data-dpad-mode] .offline-card:focus-visible {
 
 .offline-card-size {
   display: block;
-  font-size: 0.7rem;
-  color: var(--text-muted);
+  font-size: 0.65rem;
+  color: #666;
+}
+
+/* ===== Loading ===== */
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: #141414;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid #333;
+  border-top-color: #e50914;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .nf-rows-container {
+    margin-top: -8vh;
+  }
+
+  .nf-row>* {
+    width: 140px;
+  }
+
+  .continue-card,
+  .offline-card {
+    width: 140px;
+  }
+
+  .nf-row-arrow {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .nf-rows-container {
+    margin-top: -5vh;
+  }
+
+  .nf-row {
+    gap: 0.4rem;
+  }
+
+  .nf-row>* {
+    width: 120px;
+  }
+
+  .continue-card,
+  .offline-card {
+    width: 120px;
+  }
 }

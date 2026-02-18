@@ -1,13 +1,66 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import HeroSearch from '../components/HeroSearch';
+import HeroBillboard from '../components/HeroSearch';
 import MediaCard from '../components/MediaCard';
 import { useUser } from '../contexts/UserContext';
 import { getLibrary } from '../services/media';
-import { searchMovies, searchTvShows, getTvShowDetails, getRecommendedMovies, getRecommendedTvShows, getImageUrl } from '../services/tmdb';
+import { searchMovies, searchTvShows, getTvShowDetails, getRecommendedMovies, getRecommendedTvShows, getTrendingAll, getImageUrl } from '../services/tmdb';
 import { cleanName, extractYear, pickBestResult } from '../utils/matchTmdb';
 import { getOfflineVideos, removeOfflineVideo, formatFileSize } from '../services/offlineStorage';
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import './Home.css';
+
+/* ===== Scrollable Netflix Row ===== */
+function NetflixRow({ title, children, count }) {
+  const rowRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = () => {
+    const el = rowRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 20);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 20);
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const el = rowRef.current;
+    if (el) el.addEventListener('scroll', checkScroll, { passive: true });
+    return () => el?.removeEventListener('scroll', checkScroll);
+  }, [children]);
+
+  const scroll = (dir) => {
+    const el = rowRef.current;
+    if (!el) return;
+    const amount = el.clientWidth * 0.8;
+    el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
+  };
+
+  return (
+    <section className="nf-section">
+      <h2 className="nf-section-title">
+        {title}
+        {count != null && <span className="nf-section-count">{count}</span>}
+      </h2>
+      <div className="nf-row-wrapper">
+        {canScrollLeft && (
+          <button className="nf-row-arrow nf-row-arrow-left" onClick={() => scroll('left')}>
+            <FaChevronLeft />
+          </button>
+        )}
+        <div className="nf-row" ref={rowRef}>
+          {children}
+        </div>
+        {canScrollRight && (
+          <button className="nf-row-arrow nf-row-arrow-right" onClick={() => scroll('right')}>
+            <FaChevronRight />
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
 
 function Home() {
   const { currentUser, clearContinueWatching } = useUser();
@@ -16,6 +69,7 @@ function Home() {
   const [localTvTmdb, setLocalTvTmdb] = useState([]);
   const [recommendedMovies, setRecommendedMovies] = useState([]);
   const [recommendedTv, setRecommendedTv] = useState([]);
+  const [trending, setTrending] = useState([]);
   const [tvBadges, setTvBadges] = useState({});
   const [offlineVideos, setOfflineVideos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,14 +81,16 @@ function Home() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [libRes, recMovies, recTv] = await Promise.all([
+        const [libRes, recMovies, recTv, trendRes] = await Promise.all([
           getLibrary().catch(() => ({ data: { movies: [], tvShows: [] } })),
           getRecommendedMovies().catch(() => ({ data: { results: [] } })),
           getRecommendedTvShows().catch(() => ({ data: { results: [] } })),
+          getTrendingAll().catch(() => ({ data: { results: [] } })),
         ]);
         setLibrary(libRes.data);
         setRecommendedMovies(recMovies.data.results || []);
         setRecommendedTv(recTv.data.results || []);
+        setTrending(trendRes.data.results || []);
       } catch {
         // Ignore
       } finally {
@@ -114,18 +170,14 @@ function Home() {
           const details = res.data;
           const nextEp = details.next_episode_to_air;
           const lastEp = details.last_episode_to_air;
-          // Check if there are aired episodes we might not have (show has more episodes than what's typical on drive)
-          // Use next_episode_to_air for "coming soon" badge
           if (nextEp && nextEp.air_date > today) {
             badges[show.id] = { type: 'coming-soon', date: nextEp.air_date };
           } else if (details.status === 'Returning Series' && lastEp && lastEp.air_date) {
-            // Show is returning but no next episode scheduled yet - check if recent episodes aired
             const daysSinceLast = (Date.now() - new Date(lastEp.air_date).getTime()) / (1000 * 60 * 60 * 24);
             if (daysSinceLast < 14) {
               badges[show.id] = { type: 'new-episodes' };
             }
           }
-          // If show has next ep that already aired (edge case: API hasn't updated yet)
           if (nextEp && nextEp.air_date <= today) {
             badges[show.id] = { type: 'new-episodes' };
           }
@@ -150,7 +202,6 @@ function Home() {
       .filter(([, v]) => v.status === 'watching')
       .map(([id, v]) => ({ ...v, mediaId: id, type: 'episode' })),
   ].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-  // Deduplicate: one entry per show (use showId for episodes, mediaId for movies)
   const seenKeys = new Set();
   const continueWatching = continueWatchingRaw.filter((item) => {
     const key = item.type === 'episode' && item.showId ? `show-${item.showId}` : item.mediaId;
@@ -169,6 +220,19 @@ function Home() {
     })),
   ].sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
 
+  // Pick a random featured item for the billboard
+  const featured = useMemo(() => {
+    // Prefer local movies/TV, then trending, then recommendations
+    const candidates = [
+      ...localMovieTmdb.filter((m) => m.backdrop_path).map((m) => ({ ...m, _type: 'movie' })),
+      ...localTvTmdb.filter((s) => s.backdrop_path).map((s) => ({ ...s, _type: 'tv' })),
+      ...trending.filter((t) => t.backdrop_path && (t.media_type === 'movie' || t.media_type === 'tv'))
+        .map((t) => ({ ...t, _type: t.media_type })),
+    ];
+    if (candidates.length === 0) return null;
+    return candidates[Math.floor(Math.random() * Math.min(candidates.length, 10))];
+  }, [localMovieTmdb, localTvTmdb, trending]);
+
   if (loading) {
     return (
       <div className="loading-spinner">
@@ -179,68 +243,61 @@ function Home() {
 
   return (
     <div className="home-page">
-      <HeroSearch />
+      <HeroBillboard item={featured} type={featured?._type || 'movie'} />
 
-      {continueWatching.length > 0 && (
-        <section className="section container">
-          <div className="section-header-row">
-            <h2 className="section-title">Continue Watching</h2>
-            <button className="clear-watching-btn" onClick={clearContinueWatching}>Clear All</button>
-          </div>
-          <div className="continue-row">
-            {continueWatching.slice(0, 8).map((item) => {
-              let linkTo;
-              const t = item.currentTime ? `&t=${item.currentTime}` : '';
-              if (item.type === 'movie') {
-                linkTo = `/movie/${item.mediaId}?autoplay=1${t}`;
-              } else if (item.showId && item.season && item.episode) {
-                linkTo = `/tv/${item.showId}/season/${item.season}/episode/${item.episode}?autoplay=1${t}`;
-              } else {
-                // Fallback: parse mediaId format "showId-sSNeEP"
-                const match = item.mediaId.match(/^(\d+)-s(\d+)e(\d+)$/);
-                if (match) {
-                  linkTo = `/tv/${match[1]}/season/${match[2]}/episode/${match[3]}?autoplay=1${t}`;
-                } else {
-                  linkTo = `/tv/${item.mediaId}`;
-                }
-              }
-              return (
-              <Link
-                key={item.mediaId}
-                to={linkTo}
-                className="continue-card"
-              >
-                {item.posterPath ? (
-                  <img src={getImageUrl(item.posterPath, 'w300')} alt={item.title} />
-                ) : (
-                  <div className="continue-no-img">{item.title}</div>
-                )}
-                <div className="continue-progress">
-                  <div className="continue-bar" style={{ width: `${(item.progress || 0) * 100}%` }} />
-                </div>
-                <span className="continue-title">{item.title}</span>
-              </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
+      <div className="nf-rows-container">
+        {continueWatching.length > 0 && (
+          <section className="nf-section">
+            <div className="nf-section-header-row">
+              <h2 className="nf-section-title">Continue Watching</h2>
+              <button className="clear-watching-btn" onClick={clearContinueWatching}>Clear All</button>
+            </div>
+            <div className="nf-row-wrapper">
+              <div className="nf-row">
+                {continueWatching.slice(0, 10).map((item) => {
+                  let linkTo;
+                  const t = item.currentTime ? `&t=${item.currentTime}` : '';
+                  if (item.type === 'movie') {
+                    linkTo = `/movie/${item.mediaId}?autoplay=1${t}`;
+                  } else if (item.showId && item.season && item.episode) {
+                    linkTo = `/tv/${item.showId}/season/${item.season}/episode/${item.episode}?autoplay=1${t}`;
+                  } else {
+                    const match = item.mediaId.match(/^(\d+)-s(\d+)e(\d+)$/);
+                    if (match) {
+                      linkTo = `/tv/${match[1]}/season/${match[2]}/episode/${match[3]}?autoplay=1${t}`;
+                    } else {
+                      linkTo = `/tv/${item.mediaId}`;
+                    }
+                  }
+                  return (
+                    <Link key={item.mediaId} to={linkTo} className="continue-card">
+                      {item.posterPath ? (
+                        <img src={getImageUrl(item.posterPath, 'w300')} alt={item.title} />
+                      ) : (
+                        <div className="continue-no-img">{item.title}</div>
+                      )}
+                      <div className="continue-progress">
+                        <div className="continue-bar" style={{ width: `${(item.progress || 0) * 100}%` }} />
+                      </div>
+                      <span className="continue-title">{item.title}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
 
-      {watchlistItems.length > 0 && (
-        <section className="section container">
-          <h2 className="section-title">My Watchlist <span className="section-count">{watchlistItems.length}</span></h2>
-          <div className="carousel-row">
+        {watchlistItems.length > 0 && (
+          <NetflixRow title="My List" count={watchlistItems.length}>
             {watchlistItems.map((item) => (
               <MediaCard key={`${item._type}-${item.id}`} item={item} type={item._type} />
             ))}
-          </div>
-        </section>
-      )}
+          </NetflixRow>
+        )}
 
-      {offlineVideos.length > 0 && (
-        <section className="section container">
-          <h2 className="section-title">Saved MP4s <span className="section-count">{offlineVideos.length}</span></h2>
-          <div className="carousel-row">
+        {offlineVideos.length > 0 && (
+          <NetflixRow title="Downloaded" count={offlineVideos.length}>
             {offlineVideos.map((v) => (
               <Link key={v.key} to={v.linkTo} className="offline-card">
                 {v.posterPath ? (
@@ -252,53 +309,54 @@ function Home() {
                 <span className="offline-card-size">{formatFileSize(v.size)}</span>
               </Link>
             ))}
-          </div>
-        </section>
-      )}
+          </NetflixRow>
+        )}
 
-      {localMovieTmdb.length > 0 && (
-        <section className="section container">
-          <h2 className="section-title">Your Movies <span className="section-count">{localMovieTmdb.length}</span></h2>
-          <div className="carousel-row">
+        {localMovieTmdb.length > 0 && (
+          <NetflixRow title="Your Movies" count={localMovieTmdb.length}>
             {localMovieTmdb.map((m) => (
               <MediaCard key={m.id} item={m} type="movie" badge="local" />
             ))}
-          </div>
-        </section>
-      )}
+          </NetflixRow>
+        )}
 
-      {localTvTmdb.length > 0 && (
-        <section className="section container">
-          <h2 className="section-title">Your TV Shows <span className="section-count">{localTvTmdb.length}</span></h2>
-          <div className="carousel-row">
+        {localTvTmdb.length > 0 && (
+          <NetflixRow title="Your TV Shows" count={localTvTmdb.length}>
             {localTvTmdb.map((s) => (
               <MediaCard key={s.id} item={s} type="tv" badge={tvBadges[s.id] || 'local'} />
             ))}
-          </div>
-        </section>
-      )}
+          </NetflixRow>
+        )}
 
-      {filteredRecMovies.length > 0 && (
-        <section className="section container">
-          <h2 className="section-title">Recommended Movies</h2>
-          <div className="carousel-row">
-            {filteredRecMovies.slice(0, 12).map((m) => (
+        {filteredRecMovies.length > 0 && (
+          <NetflixRow title="Popular Movies">
+            {filteredRecMovies.slice(0, 20).map((m) => (
               <MediaCard key={m.id} item={m} type="movie" badge="cloud" />
             ))}
-          </div>
-        </section>
-      )}
+          </NetflixRow>
+        )}
 
-      {filteredRecTv.length > 0 && (
-        <section className="section container">
-          <h2 className="section-title">Recommended TV Shows</h2>
-          <div className="carousel-row">
-            {filteredRecTv.slice(0, 12).map((s) => (
+        {filteredRecTv.length > 0 && (
+          <NetflixRow title="Popular TV Shows">
+            {filteredRecTv.slice(0, 20).map((s) => (
               <MediaCard key={s.id} item={s} type="tv" badge="cloud" />
             ))}
-          </div>
-        </section>
-      )}
+          </NetflixRow>
+        )}
+
+        {trending.length > 0 && (
+          <NetflixRow title="Trending Now">
+            {trending.filter((t) => t.backdrop_path).slice(0, 20).map((t) => (
+              <MediaCard
+                key={t.id}
+                item={t}
+                type={t.media_type === 'tv' ? 'tv' : 'movie'}
+                badge="cloud"
+              />
+            ))}
+          </NetflixRow>
+        )}
+      </div>
     </div>
   );
 }

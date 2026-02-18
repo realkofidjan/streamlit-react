@@ -1,10 +1,15 @@
 .header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
-  background: var(--bg-header);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 10%, transparent);
+  transition: background 0.3s;
+}
+
+.header.scrolled {
+  background: rgba(20, 20, 20, 0.95);
 }
 
 .header-container {
@@ -197,6 +202,48 @@
   color: #ef4444;
 }
 
+/* ===== Inline Search ===== */
+.header-search {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.header-search-icon {
+  background: none;
+  border: none;
+  color: #e5e5e5;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.3rem;
+  transition: color 0.2s;
+}
+
+.header-search-icon:hover {
+  color: #fff;
+}
+
+.header-search-input {
+  width: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid #e5e5e5;
+  color: #fff;
+  font-size: 0.85rem;
+  outline: none;
+  transition: width 0.3s ease, padding 0.3s ease;
+}
+
+.header-search.open .header-search-input {
+  width: 200px;
+  padding: 0.4rem 0.6rem;
+}
+
+.header-search-input::placeholder {
+  color: #999;
+  font-size: 0.8rem;
+}
+
 /* ===== Floating Mobile Menu ===== */
 .mobile-overlay {
   display: none;
@@ -244,8 +291,13 @@
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
   }
 
   .mobile-floating-menu {

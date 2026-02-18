@@ -1,14 +1,16 @@
 .media-card {
   display: block;
-  border-radius: 8px;
+  border-radius: 4px;
   overflow: hidden;
-  background: var(--bg-card);
-  transition: var(--transition);
+  background: #181818;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, z-index 0s 0.25s;
 }
 
 .media-card:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--shadow-lg);
+  transform: scale(1.08);
+  z-index: 5;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, z-index 0s;
 }
 
 .media-card-poster {

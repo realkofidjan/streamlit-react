@@ -1,58 +1,53 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaSearch } from 'react-icons/fa';
+import { FaPlay, FaInfoCircle } from 'react-icons/fa';
+import { getImageUrl } from '../services/tmdb';
 import './HeroSearch.css';
 
-function HeroSearch() {
-  const [activeTab, setActiveTab] = useState('movie');
-  const [query, setQuery] = useState('');
+function HeroBillboard({ item, type }) {
   const navigate = useNavigate();
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (query.trim()) {
-      navigate(`/search?type=${activeTab}&query=${encodeURIComponent(query.trim())}`);
-    }
-  };
+  if (!item) return <div className="billboard-placeholder" />;
+
+  const title = type === 'movie' ? item.title : item.name;
+  const overview = item.overview?.length > 200
+    ? item.overview.slice(0, 200) + '…'
+    : item.overview;
+  const backdrop = getImageUrl(item.backdrop_path, 'original');
+  const detailPath = type === 'movie' ? `/movie/${item.id}` : `/tv/${item.id}`;
 
   return (
-    <section className="hero-search">
-      <div className="hero-bg-overlay" />
-      <div className="hero-content">
-        <h1 className="hero-title">Welcome to StreamIt</h1>
-        <p className="hero-subtitle">
-          Millions of movies and TV shows to discover. Explore now.
-        </p>
-        <div className="hero-tabs">
+    <section className="billboard">
+      {backdrop && (
+        <img
+          className="billboard-bg"
+          src={backdrop}
+          alt=""
+          draggable={false}
+        />
+      )}
+      <div className="billboard-gradient-bottom" />
+      <div className="billboard-gradient-left" />
+
+      <div className="billboard-content">
+        <h1 className="billboard-title">{title}</h1>
+        {overview && <p className="billboard-overview">{overview}</p>}
+        <div className="billboard-actions">
           <button
-            className={`hero-tab ${activeTab === 'movie' ? 'active' : ''}`}
-            onClick={() => setActiveTab('movie')}
+            className="billboard-btn billboard-btn-play"
+            onClick={() => navigate(`${detailPath}?autoplay=1`)}
           >
-            Movies
+            <FaPlay /> Play
           </button>
           <button
-            className={`hero-tab ${activeTab === 'tv' ? 'active' : ''}`}
-            onClick={() => setActiveTab('tv')}
+            className="billboard-btn billboard-btn-info"
+            onClick={() => navigate(detailPath)}
           >
-            TV Shows
+            <FaInfoCircle /> More Info
           </button>
         </div>
-        <form className="hero-search-form" onSubmit={handleSearch}>
-          <input
-            type="text"
-            placeholder={activeTab === 'movie' ? 'Search for a movie...' : 'Search for a TV show...'}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="hero-search-input"
-          />
-          <button type="submit" className="hero-search-btn">
-            <FaSearch />
-            <span>Search</span>
-          </button>
-        </form>
       </div>
     </section>
   );
 }
 
-export default HeroSearch;
+export default HeroBillboard;

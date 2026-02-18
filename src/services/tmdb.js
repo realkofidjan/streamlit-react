@@ -64,3 +64,6 @@ export const getRecommendedTvShows = (page = 1) =>
       with_original_language: 'en',
     },
   });
+
+export const getTrendingAll = () =>
+  api.get('/trending/all/week');
