@@ -650,7 +650,8 @@ app.get('/api/subtitles/download', async (req, res) => {
       body: JSON.stringify({ file_id: parseInt(file_id) }),
     });
     const dlData = await dlRes.json();
-    if (!dlData.link) return res.status(404).json({ error: 'No download link returned' });
+    console.log(`[subtitles] Download API response (status ${dlRes.status}):`, JSON.stringify(dlData));
+    if (!dlData.link) return res.status(404).json({ error: 'No download link returned', details: dlData });
 
     // Step 2: Fetch the SRT content
     const srtRes = await fetch(dlData.link);

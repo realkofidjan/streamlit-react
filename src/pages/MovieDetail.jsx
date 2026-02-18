@@ -7,7 +7,7 @@ import { useUser } from '../contexts/UserContext';
 import NetflixPlayer from '../components/NetflixPlayer';
 import SaveOfflineButton from '../components/SaveOfflineButton';
 import { isVideoOffline } from '../services/offlineStorage';
-import { searchSubtitles, getSubtitleUrl } from '../services/subtitles';
+import { searchSubtitles, fetchSubtitleUrl } from '../services/subtitles';
 import './MovieDetail.css';
 
 function MovieDetail() {
@@ -75,11 +75,14 @@ function MovieDetail() {
   // Auto-fetch subtitles
   useEffect(() => {
     if (!localFile) return;
-    searchSubtitles(id, 'movie').then((results) => {
+    searchSubtitles(id, 'movie').then(async (results) => {
       if (results.length > 0) {
         const best = results[0];
         const fileId = best.attributes?.files?.[0]?.file_id;
-        if (fileId) setSubtitleUrl(getSubtitleUrl(fileId));
+        if (fileId) {
+          const url = await fetchSubtitleUrl(fileId);
+          if (url) setSubtitleUrl(url);
+        }
       }
     });
   }, [id, localFile]);

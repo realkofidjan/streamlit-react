@@ -28,10 +28,20 @@ export async function searchSubtitles(tmdbId, type = 'movie', season, episode, l
 }
 
 /**
- * Get the VTT subtitle URL for a given OpenSubtitles file ID.
+ * Fetch VTT subtitle content for a given file ID and return a blob URL.
+ * Returns null if the download fails.
  * @param {string|number} fileId - The subtitle file ID from search results
- * @returns {string} URL to fetch VTT content from our server proxy
+ * @returns {Promise<string|null>} Blob URL for the VTT content, or null on failure
  */
-export function getSubtitleUrl(fileId) {
-    return `${getMediaUrl()}/api/subtitles/download?file_id=${fileId}`;
+export async function fetchSubtitleUrl(fileId) {
+    try {
+        const res = await fetch(`${getMediaUrl()}/api/subtitles/download?file_id=${fileId}`);
+        if (!res.ok) return null;
+        const vttText = await res.text();
+        if (!vttText.startsWith('WEBVTT')) return null;
+        const blob = new Blob([vttText], { type: 'text/vtt' });
+        return URL.createObjectURL(blob);
+    } catch {
+        return null;
+    }
 }
