@@ -39,7 +39,7 @@ let MOVIES_DIRS = config.moviesDirs;
 let TV_DIRS = config.tvDirs;
 
 const INITIAL_CHUNK = 1024 * 1024; // 1MB
-const BUFFER_CHUNK = 3 * 1024 * 1024; // 3MB
+const BUFFER_CHUNK = 10 * 1024 * 1024; // 10MB
 const STREAM_HWM = 64 * 1024;
 
 app.use(cors());
