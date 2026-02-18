@@ -171,7 +171,7 @@ function streamFile(filePath, req, res) {
       'Accept-Ranges': 'bytes',
       'Content-Length': chunkSize,
       'Content-Type': contentType,
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
     });
 
     stream.pipe(res);
@@ -191,7 +191,7 @@ function streamFile(filePath, req, res) {
       'Accept-Ranges': 'bytes',
       'Content-Length': chunkSize,
       'Content-Type': contentType,
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
     });
     stream.pipe(res);
   }
