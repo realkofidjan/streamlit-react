@@ -38,9 +38,9 @@ let config = loadConfig();
 let MOVIES_DIRS = config.moviesDirs;
 let TV_DIRS = config.tvDirs;
 
-const INITIAL_CHUNK = 5 * 1024 * 1024;
-const BUFFER_CHUNK = 30 * 1024 * 1024;
-const STREAM_HWM = 256 * 1024;
+const INITIAL_CHUNK = 1024 * 1024; // 1MB
+const BUFFER_CHUNK = 3 * 1024 * 1024; // 3MB
+const STREAM_HWM = 64 * 1024;
 
 app.use(cors());
 app.use(express.json());
