@@ -163,7 +163,7 @@ function streamFile(filePath, req, res) {
     const chunkSize = end - start + 1;
 
     // Log the range request for debugging
-    console.log(`Stream: ${path.basename(filePath)} | Range: ${start}-${end}/${fileSize} (${chunkSize} bytes)`);
+    console.log(`Stream: ${req.url} | Range: ${start}-${end}/${fileSize} (${chunkSize} bytes)`);
 
     const stream = fs.createReadStream(filePath, { start, end, highWaterMark: STREAM_HWM });
     res.writeHead(206, {
