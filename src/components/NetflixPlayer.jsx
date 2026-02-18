@@ -11,17 +11,8 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes, s
   const playerRef = useRef(null);
   const hideTimer = useRef(null);
   const progressReportTimer = useRef(null);
-  // Check if this is a transcoded (non-seekable) stream — MKV/AVI served via ffmpeg
-  const isTranscoded = src && (src.includes('.mkv') || src.includes('.avi'));
-  const seekOffsetRef = useRef(isTranscoded && startTime ? startTime : 0);
 
-  const [videoSrc, setVideoSrc] = useState(() => {
-    if (isTranscoded && startTime && startTime > 0) {
-      const base = src.split('?')[0];
-      return `${base}?t=${startTime}`;
-    }
-    return src;
-  });
+  const [videoSrc, setVideoSrc] = useState(src);
 
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -116,7 +107,7 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes, s
     const vid = videoRef.current;
     if (!vid) return;
     const report = () => {
-      const actual = isTranscoded ? seekOffsetRef.current + vid.currentTime : vid.currentTime;
+      const actual = vid.currentTime;
       const dur = duration || vid.duration;
       if (actual > 0 && dur > 0) {
         onProgress({ currentTime: actual, duration: dur });
@@ -165,17 +156,7 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes, s
   const skip = (seconds) => {
     const vid = videoRef.current;
     if (!vid) return;
-    if (isTranscoded) {
-      const actualTime = seekOffsetRef.current + vid.currentTime;
-      const newTime = Math.min(Math.max(actualTime + seconds, 0), duration || Infinity);
-      seekOffsetRef.current = newTime;
-      const base = src.split('?')[0];
-      setVideoSrc(`${base}?t=${newTime}&_=${Date.now()}`);
-      setCurrentTime(newTime);
-      setBuffering(true);
-    } else {
-      vid.currentTime = Math.min(Math.max(vid.currentTime + seconds, 0), vid.duration);
-    }
+    vid.currentTime = Math.min(Math.max(vid.currentTime + seconds, 0), vid.duration);
   };
 
   const toggleMute = () => {
@@ -198,7 +179,7 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes, s
   const handleTimeUpdate = () => {
     const vid = videoRef.current;
     if (!vid) return;
-    const actual = isTranscoded ? seekOffsetRef.current + vid.currentTime : vid.currentTime;
+    const actual = vid.currentTime;
     setCurrentTime(actual);
     if (vid.buffered.length > 0) {
       setBuffered(vid.buffered.end(vid.buffered.length - 1));
@@ -212,18 +193,8 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes, s
     if (!totalDuration) return;
     const time = (pct / 100) * totalDuration;
     if (!isFinite(time)) return;
-
-    if (isTranscoded) {
-      // Reload the stream with ffmpeg seeking to the new position
-      seekOffsetRef.current = time;
-      const base = src.split('?')[0];
-      setVideoSrc(`${base}?t=${time}&_=${Date.now()}`);
-      setCurrentTime(time);
-      setBuffering(true);
-    } else {
-      vid.currentTime = time;
-      setCurrentTime(time);
-    }
+    vid.currentTime = time;
+    setCurrentTime(time);
   };
 
   const handleVolumeChange = (pct) => {
@@ -284,25 +255,9 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes, s
         onLoadedMetadata={() => {
           const vid = videoRef.current;
           if (!vid) return;
-          if (isTranscoded) {
-            // For transcoded streams, vid.duration may be Infinity or unknown
-            // Keep existing duration if we already have one (from a seek reload)
-            if (vid.duration && isFinite(vid.duration) && vid.duration > 0) {
-              const total = seekOffsetRef.current + vid.duration;
-              setDuration(total);
-              // If resume position is > 95% of total, restart from beginning
-              if (seekOffsetRef.current > total * 0.95) {
-                seekOffsetRef.current = 0;
-                const base = src.split('?')[0];
-                setVideoSrc(base);
-                setCurrentTime(0);
-              }
-            }
-          } else {
-            setDuration(vid.duration || 0);
-            if (startTime && startTime > 0 && startTime < vid.duration * 0.95) {
-              vid.currentTime = startTime;
-            }
+          setDuration(vid.duration || 0);
+          if (startTime && startTime > 0 && startTime < vid.duration * 0.95) {
+            vid.currentTime = startTime;
           }
           // Set subtitle track mode
           if (vid.textTracks && vid.textTracks.length > 0) {

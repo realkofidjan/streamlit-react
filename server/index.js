@@ -126,20 +126,11 @@ function writeUsers(users) {
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
 }
 
-// Formats that browsers can play natively (no transcoding needed)
-const NATIVE_EXTS = new Set(['.mp4', '.webm', '.m4v']);
-
 function streamFile(filePath, req, res) {
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: 'File not found' });
   }
   const ext = path.extname(filePath).toLowerCase();
-
-  // MKV/AVI need ffmpeg remux to MP4 for browser playback
-  if (!NATIVE_EXTS.has(ext)) {
-    return streamTranscoded(filePath, req, res);
-  }
-
   const stat = fs.statSync(filePath);
   const fileSize = stat.size;
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
@@ -174,153 +165,6 @@ function streamFile(filePath, req, res) {
     });
     stream.pipe(res);
   }
-}
-
-// Track active transcodes so we can reuse temp files
-const transcodeCache = new Map(); // filePath -> { tmpPath, ready, size, ffProcess }
-
-function cleanupTranscodes() {
-  for (const [, entry] of transcodeCache) {
-    try { if (entry.ffProcess) entry.ffProcess.kill('SIGTERM'); } catch { }
-    try { if (entry.tmpPath && fs.existsSync(entry.tmpPath)) fs.unlinkSync(entry.tmpPath); } catch { }
-  }
-  transcodeCache.clear();
-}
-process.on('exit', cleanupTranscodes);
-process.on('SIGINT', () => { cleanupTranscodes(); process.exit(); });
-
-function streamTranscoded(filePath, req, res) {
-  // Seek support: accept ?t=<seconds> query param for start time
-  const startTime = parseFloat(req.query.t) || 0;
-  const cacheKey = `${filePath}:${startTime}`;
-
-  // If we already have a completed transcode, serve from temp file with range support
-  const cached = transcodeCache.get(cacheKey);
-  if (cached && cached.ready) {
-    return streamFile(cached.tmpPath, req, res);
-  }
-
-  // If transcode is already in progress, wait for it and start streaming from temp file
-  if (cached && !cached.ready) {
-    return streamFromGrowingFile(cached, req, res);
-  }
-
-  // Start new transcode to temp file
-  const tmpPath = path.join(require('os').tmpdir(), `transcode-${crypto.randomUUID()}.mp4`);
-  const seekArgs = startTime > 0 ? ['-ss', String(startTime)] : [];
-
-  // Probe video codec first
-  const probe = spawn('ffprobe', [
-    '-v', 'error', '-select_streams', 'v:0',
-    '-show_entries', 'stream=codec_name',
-    '-of', 'csv=p=0', filePath,
-  ]);
-
-  let codecName = '';
-  probe.stdout.on('data', (d) => { codecName += d.toString().trim(); });
-
-  probe.on('close', () => {
-    const browserSafe = new Set(['h264', 'avc1', 'avc']);
-    const canCopy = browserSafe.has(codecName.toLowerCase());
-
-    const videoArgs = canCopy
-      ? ['-c:v', 'copy']
-      : ['-c:v', 'h264_videotoolbox', '-b:v', '5M', '-profile:v', 'high'];
-
-    const ffArgs = [
-      ...seekArgs,
-      '-i', filePath,
-      ...videoArgs,
-      '-c:a', 'aac',
-      '-b:a', '192k',
-      '-movflags', 'frag_keyframe+empty_moov+faststart',
-      '-f', 'mp4',
-      tmpPath,
-    ];
-
-    console.log(`[transcode] ${path.basename(filePath)} — codec: ${codecName}, mode: ${canCopy ? 'copy' : 're-encode'}, tmp: ${tmpPath}`);
-
-    const ff = spawn('ffmpeg', ['-y', ...ffArgs], { stdio: ['ignore', 'ignore', 'pipe'] });
-
-    const entry = { tmpPath, ready: false, ffProcess: ff };
-    transcodeCache.set(cacheKey, entry);
-
-    ff.stderr.on('data', (d) => {
-      const msg = d.toString().trim();
-      if (msg.includes('Error') || msg.includes('error')) {
-        console.error(`[ffmpeg error] ${msg}`);
-      }
-    });
-
-    ff.on('close', (code) => {
-      entry.ready = true;
-      entry.ffProcess = null;
-      if (code === 0) {
-        console.log(`[transcode] Done: ${path.basename(filePath)}`);
-        // Clean up after 1 hour
-        setTimeout(() => {
-          transcodeCache.delete(cacheKey);
-          try { fs.unlinkSync(tmpPath); } catch { }
-        }, 3600000);
-      } else {
-        console.error(`[transcode] ffmpeg exited with code ${code}`);
-        transcodeCache.delete(cacheKey);
-        try { fs.unlinkSync(tmpPath); } catch { }
-      }
-    });
-
-    // Stream from the growing file immediately
-    streamFromGrowingFile(entry, req, res);
-  });
-
-  probe.on('error', () => {
-    console.error('[ffprobe error] falling back to direct stream');
-    // Fallback: direct chunked stream (no range support)
-    const ffArgs = [
-      ...seekArgs, '-i', filePath,
-      '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
-      '-movflags', 'frag_keyframe+empty_moov+faststart',
-      '-f', 'mp4', '-'
-    ];
-    const ff = spawn('ffmpeg', ffArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
-    res.writeHead(200, { 'Content-Type': 'video/mp4', 'Transfer-Encoding': 'chunked' });
-    ff.stdout.pipe(res);
-    res.on('close', () => ff.kill('SIGTERM'));
-  });
-}
-
-function streamFromGrowingFile(entry, req, res) {
-  // Wait until the temp file has some data, then start streaming
-  const waitForData = () => {
-    if (!fs.existsSync(entry.tmpPath)) {
-      if (entry.ready) {
-        if (!res.headersSent) res.status(500).json({ error: 'Transcode failed' });
-        return;
-      }
-      return setTimeout(waitForData, 200);
-    }
-    const stat = fs.statSync(entry.tmpPath);
-    if (stat.size < 64 * 1024 && !entry.ready) {
-      return setTimeout(waitForData, 200); // Wait for at least 64KB
-    }
-
-    if (entry.ready) {
-      // Transcode done — serve with full range support
-      return streamFile(entry.tmpPath, req, res);
-    }
-
-    // Transcode in progress — stream what we have as chunked
-    const fileSize = stat.size;
-    res.writeHead(200, {
-      'Content-Type': 'video/mp4',
-      'Transfer-Encoding': 'chunked',
-      'Cache-Control': 'no-cache',
-    });
-    const stream = fs.createReadStream(entry.tmpPath);
-    stream.pipe(res);
-    res.on('close', () => stream.destroy());
-  };
-  waitForData();
 }
 
 // ========== USERS ==========
