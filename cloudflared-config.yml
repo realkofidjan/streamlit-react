@@ -1,0 +1,8 @@
+tunnel: cc9fbef9-8c81-496c-8a76-d810c85b6f87
+
+credentials-file: /Users/realkofi.d/.cloudflared/cc9fbef9-8c81-496c-8a76-d810c85b6f87.json
+
+ingress:
+  - hostname: streamlit.stream
+    service: http://localhost:4000
+  - service: http_status:404
