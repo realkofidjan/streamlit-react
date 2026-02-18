@@ -151,16 +151,19 @@ function streamFile(filePath, req, res) {
 
     // If client requested a specific end, RESPECT IT unless it's way too big
     let end = requestedEnd;
-    if (!parts[1]) {
+    if (!parts[1] || isNaN(requestedEnd)) {
       // No end specified, use our chunk size
       end = Math.min(start + maxChunk - 1, fileSize - 1);
     } else {
-      // End specified, but check if we should still limit it (e.g. download accelerators requesting whole file)
-      // For now, let's respect the request if it's small, but cap huge requests
+      // End specified.
+      // Only cap it if the requested range is LARGER than our buffer.
       if (end - start > BUFFER_CHUNK) {
         end = Math.min(start + maxChunk - 1, fileSize - 1);
       }
     }
+
+    // Debug logging to verify exact values
+    console.log(`DEBUG: range="${range}" parts=[${parts}] start=${start} reqEnd=${requestedEnd} finalEnd=${end}`);
 
     // Ensure we don't go past file size
     end = Math.min(end, fileSize - 1);
