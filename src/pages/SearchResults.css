@@ -1,13 +1,72 @@
+/* ===== Netflix Search Results ===== */
 .search-results-page {
-  padding-top: 2rem;
+  padding-top: 1rem;
+  padding-bottom: 4rem;
+  min-height: 80vh;
 }
 
 .search-results-header {
+  margin-bottom: 1.5rem;
+  padding: 0 4%;
+}
+
+.search-results-header h1 {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #999;
+}
+
+.search-results-query {
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ===== Netflix Grid ===== */
+.nf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.8rem;
+  padding: 0 4%;
+}
+
+@media (min-width: 1400px) {
+  .nf-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .nf-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.6rem;
+  }
+
+  .search-results-header h1 {
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .nf-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 0.5rem;
+  }
+}
+
+/* ===== Loading & Empty States ===== */
+.loading-spinner {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
+  justify-content: center;
+  min-height: 50vh;
+}
+
+.no-results {
+  text-align: center;
+  color: #666;
+  padding: 4rem 1rem;
+  font-size: 1.1rem;
 }
 
 .search-results-header h1 {

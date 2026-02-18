@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaFilm, FaCog, FaSignOutAlt, FaBell, FaTimes, FaBars, FaHome, FaVideo, FaTv, FaSearch } from 'react-icons/fa';
+import { FaFilm, FaCog, FaSignOutAlt, FaBell, FaTimes, FaBars, FaHome, FaVideo, FaTv, FaSearch, FaArrowLeft } from 'react-icons/fa';
 import { useUser } from '../contexts/UserContext';
 import { searchMovies, searchTvShows, getImageUrl } from '../services/tmdb';
 import './Header.css';
@@ -21,6 +21,9 @@ function Header() {
   const searchTimerRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Show back button on non-home pages
+  const isHome = location.pathname === '/';
 
   // Header background on scroll
   useEffect(() => {
@@ -171,20 +174,29 @@ function Header() {
     <>
       <header className={`header${scrolled ? ' scrolled' : ''}`}>
         <div className="header-container">
-          <Link to="/" className="logo">
-            <FaFilm className="logo-icon" />
-            <span>StreamIt</span>
-          </Link>
-
-          <nav className="nav-links-left nav-desktop">
-            <Link to="/">Home</Link>
-            <Link to="/movies">Movies</Link>
-            <Link to="/tv-shows">TV Shows</Link>
-          </nav>
+          {/* Left: Back Arrow OR Logo+Nav */}
+          {!isHome ? (
+            <button className="back-btn" onClick={() => navigate(-1)} aria-label="Go back">
+              <FaArrowLeft />
+              <span>Back</span>
+            </button>
+          ) : (
+            <>
+              <Link to="/" className="logo">
+                <FaFilm className="logo-icon" />
+                <span>StreamIt</span>
+              </Link>
+              <nav className="nav-links-left nav-desktop">
+                <Link to="/">Home</Link>
+                <Link to="/movies">Movies</Link>
+                <Link to="/tv-shows">TV Shows</Link>
+              </nav>
+            </>
+          )}
 
           {/* Centered Search */}
           <div className="header-search-wrapper" ref={searchRef}>
-            <div className="header-search-bar">
+            <div className={`header-search-bar ${searchFocused ? 'focused' : ''}`}>
               <FaSearch className="header-search-icon" />
               <input
                 type="text"
@@ -224,6 +236,7 @@ function Header() {
             )}
           </div>
 
+          {/* Right: Controls */}
           <div className="nav-links-right nav-desktop">
             {isFiifi && (
               <div className="notif-wrapper" ref={dropdownRef}>
@@ -261,15 +274,22 @@ function Header() {
                 )}
               </div>
             )}
-            <Link to="/settings" title="Settings"><FaCog /></Link>
+
             {currentUser && (
-              <div className="header-user">
-                <div className="header-avatar" style={{ background: currentUser.avatar }}>
-                  {currentUser.username[0].toUpperCase()}
+              <div className="header-user-menu">
+                <div className="header-user">
+                  <div className="header-avatar" style={{ background: currentUser.avatar }}>
+                    {currentUser.username[0].toUpperCase()}
+                  </div>
+                  <div className="header-user-dropdown">
+                    <Link to="/settings" className="header-user-link">
+                      <FaCog /> Settings
+                    </Link>
+                    <button className="header-user-link" onClick={logout}>
+                      <FaSignOutAlt /> Switch Profile
+                    </button>
+                  </div>
                 </div>
-                <button className="header-logout" onClick={logout} title="Switch Profile">
-                  <FaSignOutAlt />
-                </button>
               </div>
             )}
           </div>

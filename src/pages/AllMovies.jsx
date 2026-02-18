@@ -3,11 +3,16 @@ import MediaCard from '../components/MediaCard';
 import { getLibrary } from '../services/media';
 import { searchMovies } from '../services/tmdb';
 import { cleanName, extractYear, pickBestResult } from '../utils/matchTmdb';
+import { useUser } from '../contexts/UserContext';
 import './AllMedia.css';
 
 function AllMovies() {
+  const { currentUser } = useUser();
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Get watched status
+  const watchHistory = currentUser?.watchHistory?.movies || {};
 
   useEffect(() => {
     const load = async () => {
@@ -56,11 +61,23 @@ function AllMovies() {
     <div className="all-media-page">
       <div className="container">
         <h1 className="all-media-title">All Movies <span className="all-media-count">{movies.length}</span></h1>
-        <div className="all-media-grid">
-          {movies.map((m) => (
-            <MediaCard key={m.id} item={m} type="movie" badge="local" />
-          ))}
+
+        {/* Use the shared Netflix grid class from SearchResults/Global CSS if possible, 
+            but for now I'll use a local class that matches the grid styles 
+            or reuse the layout from SearchResults if I move it to global. 
+            Actually, let's just use the style directly or add it to AllMedia.css 
+        */}
+        <div className="nf-grid-library">
+          {movies.map((m) => {
+            // Check watched status using the history directly or rely on MediaCard's internal check
+            // MediaCard already checks watchHistory if we pass 'local' badge, 
+            // but let's be explicit because MediaCard logic is:
+            // if (isLocal && type === 'movie') checks history.
+            // We are passing badge="local" so it should work automatically!
+            return <MediaCard key={m.id} item={m} type="movie" badge="local" />;
+          })}
         </div>
+
         {movies.length === 0 && (
           <p className="all-media-empty">No movies found on your drive.</p>
         )}

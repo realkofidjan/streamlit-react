@@ -3,11 +3,16 @@ import MediaCard from '../components/MediaCard';
 import { getLibrary } from '../services/media';
 import { searchTvShows } from '../services/tmdb';
 import { cleanName, extractYear, pickBestResult } from '../utils/matchTmdb';
+import { useUser } from '../contexts/UserContext';
 import './AllMedia.css';
 
 function AllTvShows() {
+  const { currentUser } = useUser();
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Get watched status
+  const watchHistory = currentUser?.watchHistory?.episodes || {};
 
   useEffect(() => {
     const load = async () => {
@@ -56,11 +61,14 @@ function AllTvShows() {
     <div className="all-media-page">
       <div className="container">
         <h1 className="all-media-title">All TV Shows <span className="all-media-count">{shows.length}</span></h1>
-        <div className="all-media-grid">
+
+        <div className="nf-grid-library">
           {shows.map((s) => (
+            // MediaCard checks local episodes for watched badge too
             <MediaCard key={s.id} item={s} type="tv" badge="local" />
           ))}
         </div>
+
         {shows.length === 0 && (
           <p className="all-media-empty">No TV shows found on your drive.</p>
         )}
