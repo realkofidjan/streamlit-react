@@ -1,6 +1,11 @@
 tunnel: cc9fbef9-8c81-496c-8a76-d810c85b6f87
-
 credentials-file: /Users/realkofi.d/.cloudflared/cc9fbef9-8c81-496c-8a76-d810c85b6f87.json
+
+originRequest:
+  connectTimeout: 30s
+  keepAliveConnections: 100
+  keepAliveIdle: 30s
+  noTLSVerify: true
 
 ingress:
   - hostname: streamlit.stream

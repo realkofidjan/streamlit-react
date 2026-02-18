@@ -38,9 +38,9 @@ let config = loadConfig();
 let MOVIES_DIRS = config.moviesDirs;
 let TV_DIRS = config.tvDirs;
 
-const INITIAL_CHUNK = 2 * 1024 * 1024;
-const BUFFER_CHUNK = 10 * 1024 * 1024;
-const STREAM_HWM = 64 * 1024;
+const INITIAL_CHUNK = 5 * 1024 * 1024;
+const BUFFER_CHUNK = 30 * 1024 * 1024;
+const STREAM_HWM = 256 * 1024;
 
 app.use(cors());
 app.use(express.json());
@@ -319,7 +319,7 @@ app.put('/api/users/:id/profile', (req, res) => {
     if (user.pin !== String(currentPin)) return res.status(401).json({ error: 'Current PIN is incorrect' });
     user.pin = String(newPin);
   }
-  
+
   console.log(`[PROFILE UPDATE] User ${user.username} (${user.id}) updated:`, {
     username: user.username,
     emoji: user.emoji,
