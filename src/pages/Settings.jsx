@@ -134,7 +134,7 @@ function Settings() {
         nameChanged ? displayName : undefined,
         pinChanged ? currentPin : undefined,
         pinChanged ? newPin : undefined,
-        selectedEmoji,         // always send current emoji value
+        selectedEmoji || null,         // send null if empty string
         selectedColor || undefined,
       );
       setProfileMsg({ type: 'success', text: 'Profile updated!' });

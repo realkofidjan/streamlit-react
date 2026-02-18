@@ -312,9 +312,9 @@ app.put('/api/users/:id/profile', (req, res) => {
   const user = users.find((u) => u.id === req.params.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
-  if (username) user.username = username;
-  if (emoji !== undefined) user.emoji = emoji || null;
-  if (avatar) user.avatar = avatar;
+  if (username !== undefined) user.username = username;
+  if (emoji !== undefined) user.emoji = emoji === '' ? null : emoji;
+  if (avatar !== undefined) user.avatar = avatar;
   if (currentPin && newPin) {
     if (user.pin !== String(currentPin)) return res.status(401).json({ error: 'Current PIN is incorrect' });
     user.pin = String(newPin);
