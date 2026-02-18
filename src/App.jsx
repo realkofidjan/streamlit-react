@@ -10,7 +10,7 @@ import Home from './pages/Home';
 import MovieDetail from './pages/MovieDetail';
 import TvShowDetail from './pages/TvShowDetail';
 import TvSeasonDetail from './pages/TvSeasonDetail';
-import TvEpisodeDetail from './pages/TvEpisodeDetail';
+// import TvEpisodeDetail from './pages/TvEpisodeDetail';
 import SearchResults from './pages/SearchResults';
 import AllMovies from './pages/AllMovies';
 import AllTvShows from './pages/AllTvShows';
@@ -62,7 +62,7 @@ function AnimatedRoutes() {
         <Route path="/movie/:id" element={<AuthGuard><PageWrapper><MovieDetail /></PageWrapper></AuthGuard>} />
         <Route path="/tv/:id" element={<AuthGuard><PageWrapper><TvShowDetail /></PageWrapper></AuthGuard>} />
         <Route path="/tv/:id/season/:seasonNumber" element={<AuthGuard><PageWrapper><TvSeasonDetail /></PageWrapper></AuthGuard>} />
-        <Route path="/tv/:id/season/:seasonNumber/episode/:episodeNumber" element={<AuthGuard><PageWrapper><TvEpisodeDetail /></PageWrapper></AuthGuard>} />
+        {/* <Route path="/tv/:id/season/:seasonNumber/episode/:episodeNumber" element={<AuthGuard><PageWrapper><TvEpisodeDetail /></PageWrapper></AuthGuard>} /> */}
         <Route path="/search" element={<AuthGuard><PageWrapper><SearchResults /></PageWrapper></AuthGuard>} />
         <Route path="/settings" element={<PageWrapper><Settings /></PageWrapper>} />
       </Routes>
