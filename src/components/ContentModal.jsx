@@ -212,26 +212,7 @@ function ContentModal({ content, onClose, show }) {
         ? (item.runtime ? `${Math.floor(item.runtime / 60)}h ${item.runtime % 60}m` : '')
         : (item.number_of_seasons ? `${item.number_of_seasons} Season${item.number_of_seasons > 1 ? 's' : ''}` : '');
 
-    // Play movie — local goes to /play, non-local opens vidfast stream
-    const handlePlayMovie = () => {
-        if (isLocalMovie) {
-            onClose();
-            navigate(`/play?type=movie&id=${item.id}`);
-        } else {
-            setStreamUrl(`https://vidfast.pro/movie/${item.id}`);
-        }
-    };
 
-    // Play episode — local goes to /play, non-local opens vidfast stream
-    const handleEpisodePlay = (seasonNum, episodeNum) => {
-        const hasLocal = localEpisodeSet.has(episodeNum);
-        if (hasLocal) {
-            onClose();
-            navigate(`/play?type=episode&id=${item.id}&season=${seasonNum}&episode=${episodeNum}`);
-        } else {
-            setStreamUrl(`https://vidfast.pro/tv/${item.id}/${seasonNum}/${episodeNum}`);
-        }
-    };
 
     const handleDownload = (e, targetItem) => {
         e.stopPropagation();
@@ -278,6 +259,40 @@ function ContentModal({ content, onClose, show }) {
     };
 
     const inWatchlist = isInWatchlist();
+
+    const getResumeInfo = () => {
+        if (!currentUser || !item) return null;
+        if (isMovie) {
+            const progress = currentUser.watchHistory?.movies?.[String(item.id)];
+            if (progress && progress.currentTime > 0 && progress.progress < 0.95) {
+                return { time: progress.currentTime, pct: progress.progress };
+            }
+        }
+        return null;
+    };
+
+    const resumeInfo = getResumeInfo();
+
+    // Play movie — local goes to /play, non-local opens vidfast stream
+    const handlePlayMovie = (startTime = 0) => {
+        if (isLocalMovie) {
+            onClose();
+            navigate(`/play?type=movie&id=${item.id}${startTime > 0 ? `&t=${startTime}` : ''}`);
+        } else {
+            setStreamUrl(`https://vidfast.pro/movie/${item.id}`);
+        }
+    };
+
+    // Play episode — local goes to /play, non-local opens vidfast stream
+    const handleEpisodePlay = (seasonNum, episodeNum, startTime = 0) => {
+        const hasLocal = localEpisodeSet.has(episodeNum);
+        if (hasLocal) {
+            onClose();
+            navigate(`/play?type=episode&id=${item.id}&season=${seasonNum}&episode=${episodeNum}${startTime > 0 ? `&t=${startTime}` : ''}`);
+        } else {
+            setStreamUrl(`https://vidfast.pro/tv/${item.id}/${seasonNum}/${episodeNum}`);
+        }
+    };
 
     // Close stream overlay
     if (streamUrl) {
@@ -327,8 +342,8 @@ function ContentModal({ content, onClose, show }) {
                             <div className="content-modal-controls">
                                 {/* Play button — always visible */}
                                 {isMovie && (
-                                    <button className="modal-play-btn" onClick={handlePlayMovie}>
-                                        <FaPlay /> {isLocalMovie ? 'Play' : 'Stream'}
+                                    <button className="modal-play-btn" onClick={() => handlePlayMovie(resumeInfo?.time || 0)}>
+                                        <FaPlay /> {resumeInfo ? 'Resume' : (isLocalMovie ? 'Play' : 'Stream')}
                                     </button>
                                 )}
 
@@ -395,117 +410,126 @@ function ContentModal({ content, onClose, show }) {
                         </div>
 
                         {/* TV Episodes Section */}
-                        {!isMovie && details && (
-                            <div className="content-modal-section">
-                                <div className="modal-episodes">
-                                    <div className="modal-episodes-header">
-                                        <h3 className="modal-section-title">Episodes</h3>
-                                        {details.seasons && (
-                                            <div className="season-selector-container">
-                                                <button className="season-select-btn" onClick={() => setShowSeasonDropdown(!showSeasonDropdown)}>
-                                                    Season {selectedSeason} <FaChevronDown />
-                                                </button>
-                                                {showSeasonDropdown && (
-                                                    <div className="season-dropdown">
-                                                        {details.seasons.filter(s => s.season_number > 0).map(s => (
-                                                            <button
-                                                                key={s.id}
-                                                                className={`season-option ${s.season_number === selectedSeason ? 'active' : ''}`}
-                                                                onClick={() => handleSeasonChange(s.season_number)}
-                                                            >
-                                                                {s.name} ({s.episode_count} Episodes)
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
+                        {
+                            !isMovie && details && (
+                                <div className="content-modal-section">
+                                    <div className="modal-episodes">
+                                        <div className="modal-episodes-header">
+                                            <h3 className="modal-section-title">Episodes</h3>
+                                            {details.seasons && (
+                                                <div className="season-selector-container">
+                                                    <button className="season-select-btn" onClick={() => setShowSeasonDropdown(!showSeasonDropdown)}>
+                                                        Season {selectedSeason} <FaChevronDown />
+                                                    </button>
+                                                    {showSeasonDropdown && (
+                                                        <div className="season-dropdown">
+                                                            {details.seasons.filter(s => s.season_number > 0).map(s => (
+                                                                <button
+                                                                    key={s.id}
+                                                                    className={`season-option ${s.season_number === selectedSeason ? 'active' : ''}`}
+                                                                    onClick={() => handleSeasonChange(s.season_number)}
+                                                                >
+                                                                    {s.name} ({s.episode_count} Episodes)
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
 
-                                    {seasonDetails && seasonDetails.episodes && (
-                                        <div className="modal-ep-grid">
-                                            {seasonDetails.episodes.map(ep => {
-                                                const hasLocal = localEpisodeSet.has(ep.episode_number);
-                                                return (
-                                                    <div
-                                                        key={ep.id}
-                                                        className="modal-ep-row"
-                                                        onClick={() => handleEpisodePlay(selectedSeason, ep.episode_number)}
-                                                    >
-                                                        <span className="modal-ep-num">{ep.episode_number}</span>
-                                                        <div className="modal-ep-thumb-wrapper">
-                                                            <img src={getImageUrl(ep.still_path, 'w300')} alt={ep.name} className="modal-ep-thumb" />
-                                                            {currentUser?.watchHistory?.episodes?.[`${item.id}-s${selectedSeason}e${ep.episode_number}`]?.progress > 0 && (
-                                                                <div className="modal-ep-progress">
-                                                                    <div
-                                                                        className="modal-ep-progress-fill"
-                                                                        style={{ width: `${Math.min(currentUser.watchHistory.episodes[`${item.id}-s${selectedSeason}e${ep.episode_number}`].progress * 100, 100)}%` }}
-                                                                    />
+                                        {seasonDetails && seasonDetails.episodes && (
+                                            <div className="modal-ep-grid">
+                                                {seasonDetails.episodes.map(ep => {
+                                                    const hasLocal = localEpisodeSet.has(ep.episode_number);
+                                                    const epKey = `${item.id}-s${selectedSeason}e${ep.episode_number}`;
+                                                    const epProgress = currentUser?.watchHistory?.episodes?.[epKey];
+                                                    const resumeTime = (epProgress && epProgress.currentTime > 0 && epProgress.progress < 0.95) ? epProgress.currentTime : 0;
+
+                                                    return (
+                                                        <div
+                                                            key={ep.id}
+                                                            className="modal-ep-row"
+                                                            onClick={() => handleEpisodePlay(selectedSeason, ep.episode_number, resumeTime)}
+                                                        >
+                                                            <span className="modal-ep-num">{ep.episode_number}</span>
+                                                            <div className="modal-ep-thumb-wrapper">
+                                                                <img src={getImageUrl(ep.still_path, 'w300')} alt={ep.name} className="modal-ep-thumb" />
+                                                                {epProgress?.progress > 0 && (
+                                                                    <div className="modal-ep-progress">
+                                                                        <div
+                                                                            className="modal-ep-progress-fill"
+                                                                            style={{ width: `${Math.min(epProgress.progress * 100, 100)}%` }}
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="modal-ep-info">
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                    <span className="modal-ep-title">{ep.name}</span>
+                                                                    <span className="modal-ep-dur">{ep.runtime ? `${ep.runtime}m` : ''}</span>
+                                                                </div>
+                                                                <span className="modal-ep-desc">{ep.overview}</span>
+                                                            </div>
+
+                                                            {hasLocal ? (
+                                                                <button className="ep-play-btn" onClick={(e) => { e.stopPropagation(); handleEpisodePlay(selectedSeason, ep.episode_number, resumeTime); }}>
+                                                                    {resumeTime > 0 ? <FaPlay style={{ fontSize: '0.8rem' }} /> : <FaPlay />}
+                                                                </button>
+                                                            ) : (
+                                                                <div className="ep-action-btns">
+                                                                    <button className="ep-stream-btn" onClick={(e) => { e.stopPropagation(); handleEpisodePlay(selectedSeason, ep.episode_number, resumeTime); }} title={resumeTime > 0 ? "Resume" : "Stream"}>
+                                                                        <FaPlay />
+                                                                    </button>
+                                                                    <button className="ep-download-btn" onClick={(e) => requestEpisodeDownload(e, selectedSeason, ep.episode_number, ep.name)} title="Request Download">
+                                                                        <FaDownload />
+                                                                    </button>
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className="modal-ep-info">
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                                <span className="modal-ep-title">{ep.name}</span>
-                                                                <span className="modal-ep-dur">{ep.runtime ? `${ep.runtime}m` : ''}</span>
-                                                            </div>
-                                                            <span className="modal-ep-desc">{ep.overview}</span>
-                                                        </div>
-
-                                                        {hasLocal ? (
-                                                            <button className="ep-play-btn" onClick={(e) => { e.stopPropagation(); handleEpisodePlay(selectedSeason, ep.episode_number); }}>
-                                                                <FaPlay />
-                                                            </button>
-                                                        ) : (
-                                                            <div className="ep-action-btns">
-                                                                <button className="ep-stream-btn" onClick={(e) => { e.stopPropagation(); handleEpisodePlay(selectedSeason, ep.episode_number); }} title="Stream">
-                                                                    <FaPlay />
-                                                                </button>
-                                                                <button className="ep-download-btn" onClick={(e) => requestEpisodeDownload(e, selectedSeason, ep.episode_number, ep.name)} title="Request Download">
-                                                                    <FaDownload />
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* More Like This */}
-                        {similar.length > 0 && (
-                            <div className="content-modal-section">
-                                <div className="modal-recommendations">
-                                    <h3 className="modal-section-title">More Like This</h3>
-                                    <div className="modal-rec-grid">
-                                        {similar.slice(0, 12).map(s => (
-                                            <div key={s.id} className="modal-rec-card" onClick={() => openSimilarItem(s, isMovie ? 'movie' : 'tv')}>
-                                                <div className="modal-rec-poster">
-                                                    <img src={getImageUrl(s.poster_path, 'w342')} alt={s.title || s.name} />
-                                                </div>
-                                                <div className="modal-rec-info">
-                                                    <span className="modal-rec-match">98% Match</span>
-                                                    <span className="modal-rec-year">
-                                                        {(s.release_date || s.first_air_date || '').split('-')[0]}
-                                                    </span>
-                                                </div>
-                                                <p className="modal-rec-title">{s.title || s.name}</p>
-                                                <p className="modal-rec-desc">
-                                                    {s.overview?.slice(0, 100)}{s.overview?.length > 100 ? '…' : ''}
-                                                </p>
+                                                    );
+                                                })}
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )
+                        }
+
+                        {/* More Like This */}
+                        {
+                            similar.length > 0 && (
+                                <div className="content-modal-section">
+                                    <div className="modal-recommendations">
+                                        <h3 className="modal-section-title">More Like This</h3>
+                                        <div className="modal-rec-grid">
+                                            {similar.slice(0, 12).map(s => (
+                                                <div key={s.id} className="modal-rec-card" onClick={() => openSimilarItem(s, isMovie ? 'movie' : 'tv')}>
+                                                    <div className="modal-rec-poster">
+                                                        <img src={getImageUrl(s.poster_path, 'w342')} alt={s.title || s.name} />
+                                                    </div>
+                                                    <div className="modal-rec-info">
+                                                        <span className="modal-rec-match">98% Match</span>
+                                                        <span className="modal-rec-year">
+                                                            {(s.release_date || s.first_air_date || '').split('-')[0]}
+                                                        </span>
+                                                    </div>
+                                                    <p className="modal-rec-title">{s.title || s.name}</p>
+                                                    <p className="modal-rec-desc">
+                                                        {s.overview?.slice(0, 100)}{s.overview?.length > 100 ? '…' : ''}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        }
                     </>
-                )}
-            </div>
-        </div>
+                )
+                }
+            </div >
+        </div >
     );
 }
 

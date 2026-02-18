@@ -18,6 +18,7 @@ function Player() {
     const tmdbId = params.get('id');           // TMDB movie or show ID
     const season = params.get('season');       // For episodes
     const episode = params.get('episode');     // For episodes
+    const startTimeParam = params.get('t');    // Start time in seconds
 
     const [streamUrl, setStreamUrl] = useState(null);
     const [title, setTitle] = useState('');
@@ -278,6 +279,7 @@ function Player() {
                 title={title}
                 onClose={handleBack}
                 onProgress={handleProgress}
+                startTime={startTimeParam ? parseFloat(startTimeParam) : 0}
                 autoPlay
                 episodes={type === 'episode' ? episodesData : null}
                 onNextEpisode={type === 'episode' ? playNextEpisode : null}
