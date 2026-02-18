@@ -140,9 +140,31 @@ function streamFile(filePath, req, res) {
     const parts = range.replace(/bytes=/, '').split('-');
     const start = parseInt(parts[0], 10);
     const requestedEnd = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+    // Use smaller chunks for initial request to make Safari happy
     const maxChunk = start === 0 ? INITIAL_CHUNK : BUFFER_CHUNK;
-    const end = Math.min(requestedEnd, start + maxChunk - 1, fileSize - 1);
+
+    // If client requested a specific end, RESPECT IT unless it's way too big
+    let end = requestedEnd;
+    if (!parts[1]) {
+      // No end specified, use our chunk size
+      end = Math.min(start + maxChunk - 1, fileSize - 1);
+    } else {
+      // End specified, but check if we should still limit it (e.g. download accelerators requesting whole file)
+      // For now, let's respect the request if it's small, but cap huge requests
+      if (end - start > BUFFER_CHUNK) {
+        end = Math.min(start + maxChunk - 1, fileSize - 1);
+      }
+    }
+
+    // Ensure we don't go past file size
+    end = Math.min(end, fileSize - 1);
+
     const chunkSize = end - start + 1;
+
+    // Log the range request for debugging
+    console.log(`Stream: ${path.basename(filePath)} | Range: ${start}-${end}/${fileSize} (${chunkSize} bytes)`);
+
     const stream = fs.createReadStream(filePath, { start, end, highWaterMark: STREAM_HWM });
     res.writeHead(206, {
       'Content-Range': `bytes ${start}-${end}/${fileSize}`,
@@ -151,7 +173,15 @@ function streamFile(filePath, req, res) {
       'Content-Type': contentType,
       'Cache-Control': 'public, max-age=3600',
     });
+
     stream.pipe(res);
+    stream.on('error', (err) => {
+      if (err.code === 'ECONNRESET' || err.code === 'EPIPE') {
+        // Client closed connection, normal for video streaming
+        return;
+      }
+      console.error('Stream error:', err);
+    });
   } else {
     const end = Math.min(INITIAL_CHUNK - 1, fileSize - 1);
     const chunkSize = end + 1;
