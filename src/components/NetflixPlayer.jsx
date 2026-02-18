@@ -23,7 +23,6 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes, s
   const [fullscreen, setFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [buffering, setBuffering] = useState(true);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(null);
   const [subtitlesOn, setSubtitlesOn] = useState(!!subtitleUrl);
@@ -207,12 +206,7 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes, s
     setMuted(val === 0);
   };
 
-  const setSpeed = (speed) => {
-    const vid = videoRef.current;
-    if (!vid) return;
-    vid.playbackRate = speed;
-    setPlaybackSpeed(speed);
-  };
+
 
   const formatTime = (s) => {
     if (!s || isNaN(s)) return '0:00';
@@ -392,19 +386,6 @@ function NetflixPlayer({ src, title, onClose, onProgress, startTime, episodes, s
               </div>
 
               <div className="vp-controls-right">
-                {/* Speed buttons */}
-                <div className="vp-speed-group">
-                  {[0.5, 1, 1.5, 2].map((speed) => (
-                    <button
-                      key={speed}
-                      className={`vp-speed-btn ${playbackSpeed === speed ? 'active' : ''}`}
-                      tabIndex={-1}
-                      onClick={() => setSpeed(speed)}
-                    >
-                      {speed}x
-                    </button>
-                  ))}
-                </div>
 
                 {/* CC / Subtitle toggle */}
                 {subtitleUrl && (

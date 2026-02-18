@@ -72,9 +72,9 @@ function MovieDetail() {
   const watchEntry = currentUser?.watchHistory?.movies?.[String(id)];
   const isWatched = watchEntry?.progress >= 0.96;
 
-  // Auto-fetch subtitles
+  // Auto-fetch subtitles (start early, in parallel with local file search)
   useEffect(() => {
-    if (!localFile) return;
+    if (!movie) return;
     searchSubtitles(id, 'movie').then(async (results) => {
       if (results.length > 0) {
         const best = results[0];
@@ -85,7 +85,7 @@ function MovieDetail() {
         }
       }
     });
-  }, [id, localFile]);
+  }, [id, movie]);
 
   // Auto-play from continue watching
   useEffect(() => {
@@ -178,6 +178,7 @@ function MovieDetail() {
               className="stream-iframe"
               allowFullScreen
               allow="autoplay; encrypted-media"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
             />
           </div>
         )

@@ -107,9 +107,9 @@ function TvEpisodeDetail() {
   const watchEntry = currentUser?.watchHistory?.episodes?.[epKey];
   const isWatched = watchEntry?.progress >= 0.96;
 
-  // Auto-fetch subtitles
+  // Auto-fetch subtitles (start early, in parallel with local file search)
   useEffect(() => {
-    if (!localStreamUrl) return;
+    if (!episode) return;
     searchSubtitles(id, 'episode', seasonNumber, episodeNumber).then(async (results) => {
       if (results.length > 0) {
         const best = results[0];
@@ -120,7 +120,7 @@ function TvEpisodeDetail() {
         }
       }
     });
-  }, [id, seasonNumber, episodeNumber, localStreamUrl]);
+  }, [id, seasonNumber, episodeNumber, episode]);
 
   // Auto-play from continue watching
   useEffect(() => {
@@ -250,6 +250,7 @@ function TvEpisodeDetail() {
                 className="stream-iframe"
                 allowFullScreen
                 allow="autoplay; encrypted-media"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
               />
             </div>
           )
