@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { FaStar, FaClock, FaCalendar, FaHdd, FaBell, FaChevronRight, FaBookmark, FaRegBookmark } from 'react-icons/fa';
+import { FaPlay, FaPlus, FaCheck, FaThumbsUp, FaRegThumbsUp, FaArrowLeft, FaChevronDown, FaHdd, FaCalendar } from 'react-icons/fa';
 import { getTvShowDetails, getTvSeasonDetails, getImageUrl } from '../services/tmdb';
 import { searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes } from '../services/media';
 import { useUser } from '../contexts/UserContext';
@@ -8,24 +8,32 @@ import './TvShowDetail.css';
 
 function TvShowDetail() {
   const { id } = useParams();
-  const { currentUser, addToWatchlist, removeFromWatchlist, sendNotification } = useUser();
-  const isFiifi = currentUser?.username?.toLowerCase() === 'fiifi';
+  const { currentUser, addToWatchlist, removeFromWatchlist } = useUser();
   const [show, setShow] = useState(null);
+  const [selectedSeasonNumber, setSelectedSeasonNumber] = useState(1);
+  const [seasonEpisodes, setSeasonEpisodes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [localShow, setLocalShow] = useState(null);
-  const [localEpisodeCount, setLocalEpisodeCount] = useState(0);
-  const [newEpisodes, setNewEpisodes] = useState(0);
-  const [upcomingEpisodes, setUpcomingEpisodes] = useState(0);
-  const [nextAirDate, setNextAirDate] = useState(null);
-  const [requestSent, setRequestSent] = useState(false);
 
+  // Local Media State
+  const [localEpKeys, setLocalEpKeys] = useState(new Set()); // "s1-e1"
+  const [localEpisodeCount, setLocalEpisodeCount] = useState(0);
+  const [isLocalShow, setIsLocalShow] = useState(false);
+
+  // Initial Fetch
   useEffect(() => {
     const fetchShow = async () => {
+      setLoading(true);
       try {
         const res = await getTvShowDetails(id);
         setShow(res.data);
+        // Default to first season (usually 1, but could be 0 for specials or strict numbering)
+        if (res.data.seasons && res.data.seasons.length > 0) {
+          // Find first real season (season > 0 usually preferred)
+          const firstSeason = res.data.seasons.find(s => s.season_number > 0) || res.data.seasons[0];
+          setSelectedSeasonNumber(firstSeason.season_number);
+        }
       } catch (err) {
-        console.error('Failed to fetch TV show:', err);
+        console.error('Failed to fetch show:', err);
       } finally {
         setLoading(false);
       }
@@ -33,267 +41,194 @@ function TvShowDetail() {
     fetchShow();
   }, [id]);
 
-  // Search for local copy and count episodes vs aired TMDB episodes
+  // Fetch Season Episodes when selection changes
+  useEffect(() => {
+    if (!show) return;
+    const fetchSeason = async () => {
+      try {
+        const res = await getTvSeasonDetails(id, selectedSeasonNumber);
+        setSeasonEpisodes(res.data.episodes || []);
+      } catch (err) {
+        console.error('Failed to fetch season:', err);
+      }
+    };
+    fetchSeason();
+  }, [id, selectedSeasonNumber, show]);
+
+  // Check Local Files (preserving logic to scan all folders)
   useEffect(() => {
     if (!show) return;
     const findLocal = async () => {
       try {
         const res = await searchLocalTvShows(show.name);
         if (res.data.length === 0) return;
-        setLocalShow(res.data[0]);
 
-        // Gather episodes from ALL matching folders (e.g. "Danny Phantom" + "Danny Phantom (2004)")
-        // Use season+episode from FILENAME (not folder) since files can be in mismatched folders
-        const localEpKeys = new Set();
-        const localSeasonNums = new Set();
-        let totalLocal = 0;
+        setIsLocalShow(true);
+        const keys = new Set();
+        let count = 0;
+
         for (const match of res.data) {
           const seasonsRes = await getLocalTvSeasons(match.name);
           for (const season of seasonsRes.data) {
             const epsRes = await getLocalTvEpisodes(match.name, season.name);
-            totalLocal += epsRes.data.length;
+            count += epsRes.data.length;
             for (const ep of epsRes.data) {
-              // Extract season and episode from filename like "s01.e03" or "S01E03"
               const sm = ep.filename.match(/[Ss](\d+)/);
               const em = ep.filename.match(/[Ee](\d+)/);
               if (sm && em) {
-                const sNum = parseInt(sm[1]);
-                const eNum = parseInt(em[1]);
-                localSeasonNums.add(sNum);
-                localEpKeys.add(`${sNum}-${eNum}`);
+                const s = parseInt(sm[1]);
+                const e = parseInt(em[1]);
+                keys.add(`${s}-${e}`);
               }
             }
           }
         }
-        setLocalEpisodeCount(totalLocal);
-
-        // Only check seasons the user actually has on their drive for missing episodes
-        // Check all seasons for upcoming episodes
-        const today = new Date().toISOString().split('T')[0];
-        let airedNotLocal = 0;
-        let upcomingCount = 0;
-        let nextUpcomingDate = null;
-
-        const tmdbSeasons = (show.seasons || []).filter((s) => s.season_number > 0);
-        for (const s of tmdbSeasons) {
-          try {
-            const seasonRes = await getTvSeasonDetails(id, s.season_number);
-            const episodes = seasonRes.data.episodes || [];
-            for (const ep of episodes) {
-              const key = `${s.season_number}-${ep.episode_number}`;
-              // Only count as "new" if it's from a season the user has locally
-              if (localSeasonNums.has(s.season_number) && ep.air_date && ep.air_date <= today && !localEpKeys.has(key)) {
-                airedNotLocal++;
-              }
-              if (ep.air_date && ep.air_date > today) {
-                upcomingCount++;
-                if (!nextUpcomingDate || ep.air_date < nextUpcomingDate) {
-                  nextUpcomingDate = ep.air_date;
-                }
-              }
-            }
-          } catch { /* skip season */ }
-        }
-
-        if (airedNotLocal > 0) setNewEpisodes(airedNotLocal);
-        setUpcomingEpisodes(upcomingCount);
-        setNextAirDate(nextUpcomingDate);
+        setLocalEpKeys(keys);
+        setLocalEpisodeCount(count);
       } catch {
-        // Media server not running
+        // Media server down or not found
       }
     };
     findLocal();
-  }, [show, id]);
+  }, [show]);
 
-  if (loading) {
-    return (
-      <div className="loading-spinner">
-        <div className="spinner" />
-      </div>
-    );
-  }
-
-  if (!show) {
-    return <div className="container section"><p>TV show not found.</p></div>;
-  }
+  if (loading) return <div className="loading-spinner"><div className="spinner" /></div>;
+  if (!show) return <div className="no-results">Show not found.</div>;
 
   const backdropUrl = getImageUrl(show.backdrop_path, 'original');
-  const posterUrl = getImageUrl(show.poster_path, 'w500');
-  const cast = show.credits?.cast?.slice(0, 12) || [];
-  const creator = show.created_by?.[0];
+  const releaseYear = show.first_air_date ? new Date(show.first_air_date).getFullYear() : '';
+  const inWatchlist = currentUser?.watchlist?.shows?.[id];
+  const genres = show.genres?.map(g => g.name).join(', ');
+  const cast = show.credits?.cast?.slice(0, 5).map(c => c.name).join(', ');
+
+  // Filter seasons (exclude specials if desired, but Netflix usually shows them)
+  const seasons = show.seasons || [];
 
   return (
     <div className="detail-page">
-      <div
-        className="detail-backdrop"
-        style={{ backgroundImage: backdropUrl ? `url(${backdropUrl})` : 'none' }}
-      >
-        <div className="detail-backdrop-overlay" />
-        <div className="detail-breadcrumbs container">
-          <div className="episode-breadcrumbs">
-            <Link to="/">Home</Link>
-            <FaChevronRight className="breadcrumb-sep" />
-            <Link to="/tv-shows">TV Shows</Link>
-            <FaChevronRight className="breadcrumb-sep" />
-            <span>{show.name}</span>
+      {/* Hero */}
+      <div className="detail-hero" style={{ backgroundImage: `url(${backdropUrl})` }}>
+        <div className="detail-overlay" />
+        <div className="detail-overlay-left" />
+
+        <div className="detail-content-wrapper">
+          <div className="detail-header">
+            <h1 className="detail-title">{show.name}</h1>
+
+            <div className="detail-meta-row">
+              <span className="match-score">96% Match</span>
+              <span className="year-tag">{releaseYear}</span>
+              <span className="maturity-rating">TV-14</span>
+              <span className="season-count">{show.number_of_seasons} Season{show.number_of_seasons !== 1 ? 's' : ''}</span>
+              <span className="hd-badge">HD</span>
+            </div>
+
+            <div className="detail-overview">
+              {show.overview}
+            </div>
+
+            <div className="detail-actions">
+              {/* Play button logic: If local content exists, link to first available? Or just stream S1E1? 
+                   For now, let's link to the first episode of the selected season.
+               */}
+              <Link
+                to={`/tv/${id}/season/${selectedSeasonNumber}/episode/1`}
+                className="btn-play"
+              >
+                <FaPlay /> Play
+              </Link>
+
+              <button
+                className="btn-secondary-action"
+                onClick={() => inWatchlist
+                  ? removeFromWatchlist('show', id)
+                  : addToWatchlist('show', id, show.name, show.poster_path)
+                }
+              >
+                {inWatchlist ? <FaCheck /> : <FaPlus />}
+                {inWatchlist ? 'My List' : 'My List'}
+              </button>
+
+              <button className="btn-secondary-action icon-only" title="Rate">
+                <FaRegThumbsUp />
+              </button>
+            </div>
+
+            <div className="detail-info-grid">
+              <div className="detail-right-col">
+                {/* Reuse meta layout if needed, but overview is already above */}
+                <div className="detail-item-row">
+                  <span className="detail-item-label">Genres:</span>
+                  <span className="detail-item-value">{genres}</span>
+                </div>
+                <div className="detail-item-row">
+                  <span className="detail-item-label">Cast:</span>
+                  <span className="detail-item-value">{cast}</span>
+                </div>
+              </div>
+            </div>
+
+            {isLocalShow && (
+              <div className="local-badge" style={{ marginTop: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: '#46d369' }}>
+                <FaHdd /> {localEpisodeCount} Episodes on Drive
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="detail-content">
-        <div className="container">
-          <div className="detail-grid">
-            <div className="detail-poster">
-              {posterUrl ? (
-                <img src={posterUrl} alt={show.name} />
-              ) : (
-                <div className="detail-no-poster">No Poster</div>
-              )}
-            </div>
-            <div className="detail-info">
-              <h1 className="detail-title">{show.name}</h1>
-              {show.tagline && <p className="detail-tagline">{show.tagline}</p>}
-              <div className="detail-meta">
-                <span className="detail-rating">
-                  <FaStar /> {show.vote_average?.toFixed(1)}
-                </span>
-                <span>
-                  <FaClock /> {show.number_of_seasons} Season{show.number_of_seasons !== 1 ? 's' : ''}
-                </span>
-                <span>
-                  <FaCalendar /> {show.first_air_date}
-                </span>
-                <span className={`status-badge ${show.status === 'Returning Series' ? 'active' : ''}`}>
-                  {show.status}
-                </span>
-              </div>
-              <div className="detail-actions-stack">
-                {localShow ? (
-                  <div className="local-badge">
-                    <FaHdd /> On your drive ({localEpisodeCount} episodes)
-                  </div>
-                ) : (
-                  <div className="download-badge">
-                    Not on your drive
-                  </div>
-                )}
-                {newEpisodes > 0 && (
-                  <div className="new-episodes-banner">
-                    <FaBell /> {newEpisodes} new episode{newEpisodes !== 1 ? 's' : ''} available
-                    {!isFiifi && (
-                      <button
-                        className="request-download-btn"
-                        disabled={requestSent}
-                        onClick={async () => {
-                          await sendNotification(show.name, id, `${newEpisodes} new episode${newEpisodes !== 1 ? 's' : ''}`);
-                          setRequestSent(true);
-                        }}
-                      >
-                        {requestSent ? 'Requested' : 'Request Download'}
-                      </button>
-                    )}
-                  </div>
-                )}
-                {upcomingEpisodes > 0 && nextAirDate && (
-                  <div className="upcoming-episodes-banner">
-                    <FaCalendar /> {upcomingEpisodes} upcoming episode{upcomingEpisodes !== 1 ? 's' : ''} — next airs {nextAirDate}
-                  </div>
-                )}
-                {(() => {
-                  const inWatchlist = currentUser?.watchlist?.shows?.[id];
-                  return (
-                    <button
-                      className={`watchlist-btn${inWatchlist ? ' active' : ''}`}
-                      onClick={() => inWatchlist
-                        ? removeFromWatchlist('show', id)
-                        : addToWatchlist('show', id, show.name, show.poster_path)
-                      }
-                    >
-                      {inWatchlist ? <FaBookmark /> : <FaRegBookmark />}
-                      {inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
-                    </button>
-                  );
-                })()}
-              </div>
-              <div className="detail-genres">
-                {show.genres?.map((g) => (
-                  <span key={g.id} className="genre-tag">{g.name}</span>
-                ))}
-              </div>
-              {show.overview && (
-                <div className="detail-overview">
-                  <h3>Overview</h3>
-                  <p>{show.overview}</p>
-                </div>
-              )}
-              {creator && (
-                <div className="detail-director">
-                  <strong>Created by:</strong> {creator.name}
-                </div>
-              )}
-            </div>
+      {/* Episodes List */}
+      <div className="episodes-section">
+        <div className="episodes-header">
+          <h2 className="episodes-title">Episodes</h2>
+          <div className="season-select-wrapper">
+            <select
+              className="season-select"
+              value={selectedSeasonNumber}
+              onChange={(e) => setSelectedSeasonNumber(parseInt(e.target.value))}
+            >
+              {seasons.map(s => (
+                <option key={s.id} value={s.season_number}>
+                  {s.name} ({s.episode_count} Episodes)
+                </option>
+              ))}
+            </select>
           </div>
+        </div>
 
-          {show.seasons?.length > 0 && (
-            <div className="seasons-section section">
-              <h2 className="section-title">Seasons</h2>
-              <div className="seasons-grid">
-                {show.seasons.map((season) => (
-                  <Link
-                    key={season.id}
-                    to={`/tv/${id}/season/${season.season_number}`}
-                    className="season-card"
-                  >
-                    <div className="season-poster">
-                      {season.poster_path ? (
-                        <img
-                          src={getImageUrl(season.poster_path, 'w342')}
-                          alt={season.name}
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="season-no-poster">No Image</div>
-                      )}
-                    </div>
-                    <div className="season-info">
-                      <h4>{season.name}</h4>
-                      <p>{season.episode_count} Episodes</p>
-                      {season.air_date && (
-                        <p className="season-date">{season.air_date}</p>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
+        <div className="episodes-list">
+          {seasonEpisodes.map((ep, idx) => {
+            const key = `${selectedSeasonNumber}-${ep.episode_number}`;
+            const isLocal = localEpKeys.has(key);
+            const isAvailable = isLocal || (ep.air_date && new Date(ep.air_date) <= new Date());
 
-          {cast.length > 0 && (
-            <div className="detail-cast section">
-              <h2 className="section-title">Cast</h2>
-              <div className="cast-grid">
-                {cast.map((person) => (
-                  <div key={person.id} className="cast-card">
-                    <div className="cast-image">
-                      {person.profile_path ? (
-                        <img
-                          src={getImageUrl(person.profile_path, 'w185')}
-                          alt={person.name}
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="cast-no-image">No Photo</div>
-                      )}
-                    </div>
-                    <div className="cast-info">
-                      <p className="cast-name">{person.name}</p>
-                      <p className="cast-character">{person.character}</p>
-                    </div>
+            return (
+              <Link
+                to={`/tv/${id}/season/${selectedSeasonNumber}/episode/${ep.episode_number}`}
+                key={ep.id}
+                className="episode-item"
+              >
+                <div className="episode-index">{idx + 1}</div>
+                <div className="episode-thumbnail">
+                  {ep.still_path ? (
+                    <img src={getImageUrl(ep.still_path, 'w300')} alt={ep.name} />
+                  ) : (
+                    <div className="episode-no-still">No Image</div>
+                  )}
+                  <div className="episode-play-icon">
+                    <FaPlay />
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
+                <div className="episode-meta">
+                  <div className="episode-header-row">
+                    <h3 className="episode-title">{ep.name}</h3>
+                    <span className="episode-duration">{ep.runtime ? `${ep.runtime}m` : ''}</span>
+                  </div>
+                  <p className="episode-overview">{ep.overview}</p>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </div>

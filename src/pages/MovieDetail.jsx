@@ -1,319 +1,186 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { FaStar, FaClock, FaCalendar, FaPlay, FaHdd, FaChevronRight, FaBookmark, FaRegBookmark, FaCheckCircle, FaEnvelope } from 'react-icons/fa';
-import { getMovieDetails, getImageUrl } from '../services/tmdb';
-import { searchLocalMovies, getLocalMovieStreamUrl } from '../services/media';
+import { useParams, Link } from 'react-router-dom';
+import { FaPlay, FaPlus, FaCheck, FaThumbsUp, FaRegThumbsUp, FaVolumeMute, FaVolumeUp, FaArrowLeft, FaDownload, FaCheckCircle } from 'react-icons/fa';
+import { getMovieDetails, getRecommendedMovies, getImageUrl } from '../services/tmdb';
+import { searchLocalMovies } from '../services/media';
 import { useUser } from '../contexts/UserContext';
-import NetflixPlayer from '../components/NetflixPlayer';
-import SaveOfflineButton from '../components/SaveOfflineButton';
-import { isVideoOffline } from '../services/offlineStorage';
-import { searchSubtitles, fetchSubtitleUrl } from '../services/subtitles';
+import MediaCard from '../components/MediaCard';
 import './MovieDetail.css';
 
 function MovieDetail() {
   const { id } = useParams();
-  const [searchParams] = useSearchParams();
-  const autoplay = searchParams.get('autoplay') === '1';
-  const resumeTime = parseFloat(searchParams.get('t')) || 0;
-  const { currentUser, updateWatchHistory, addToWatchlist, removeFromWatchlist, sendNotification } = useUser();
-  const isFiifi = currentUser?.username?.toLowerCase() === 'fiifi';
-  const [requestSent, setRequestSent] = useState(false);
+  const { currentUser, addToWatchlist, removeFromWatchlist } = useUser();
   const [movie, setMovie] = useState(null);
+  const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showPlayer, setShowPlayer] = useState(false);
-  const [localFile, setLocalFile] = useState(null);
-  const [localSearching, setLocalSearching] = useState(false);
-  const [subtitleUrl, setSubtitleUrl] = useState(null);
-
-  const autoplayTriggered = useRef(false);
+  const [localMovie, setLocalMovie] = useState(null);
+  const [streamUrl, setStreamUrl] = useState(null);
 
   useEffect(() => {
-    const fetchMovie = async () => {
+    const fetchData = async () => {
+      setLoading(true);
+      window.scrollTo(0, 0);
       try {
-        const res = await getMovieDetails(id);
-        setMovie(res.data);
+        const [movieRes, recRes] = await Promise.all([
+          getMovieDetails(id),
+          getRecommendedMovies(id),
+        ]);
+        setMovie(movieRes.data);
+        setRecommendations(recRes.data.results || []);
       } catch (err) {
-        console.error('Failed to fetch movie:', err);
+        console.error('Failed to fetch movie data:', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchMovie();
+    fetchData();
   }, [id]);
 
+  // Check for local file
   useEffect(() => {
     if (!movie) return;
-    const findLocal = async () => {
-      setLocalSearching(true);
+    const checkLocal = async () => {
       try {
-        const title = movie.title;
-        const res = await searchLocalMovies(title);
+        const res = await searchLocalMovies(movie.title);
+        // Simple match: first result
         if (res.data.length > 0) {
-          setLocalFile(res.data[0]);
+          setLocalMovie(res.data[0]);
         } else {
-          const shortTitle = title.split(/[:\-–]/)[0].trim();
-          if (shortTitle !== title) {
-            const res2 = await searchLocalMovies(shortTitle);
-            if (res2.data.length > 0) {
-              setLocalFile(res2.data[0]);
-            }
-          }
+          setLocalMovie(null);
         }
       } catch {
-        // Media server not running
-      } finally {
-        setLocalSearching(false);
+        setLocalMovie(null);
       }
     };
-    findLocal();
+    checkLocal();
   }, [movie]);
 
-  const hasOfflineDownload = isVideoOffline(`movie-${id}`);
-  const watchEntry = currentUser?.watchHistory?.movies?.[String(id)];
-  const isWatched = watchEntry?.progress >= 0.96;
-
-  // Auto-fetch subtitles (start early, in parallel with local file search)
-  useEffect(() => {
-    if (!movie) return;
-    searchSubtitles(id, 'movie').then(async (results) => {
-      if (results.length > 0) {
-        const best = results[0];
-        const fileId = best.attributes?.files?.[0]?.file_id;
-        if (fileId) {
-          const url = await fetchSubtitleUrl(fileId);
-          if (url) setSubtitleUrl(url);
-        }
-      }
-    });
-  }, [id, movie]);
-
-  // Auto-play from continue watching
-  useEffect(() => {
-    if (autoplay && localFile && !autoplayTriggered.current) {
-      autoplayTriggered.current = true;
-      setShowPlayer(true);
-    }
-  }, [autoplay, localFile]);
-
-  useEffect(() => {
-    if (showPlayer) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [showPlayer]);
-
-  const handleProgress = ({ currentTime, duration }) => {
-    if (!movie) return;
-    const progress = duration > 0 ? currentTime / duration : 0;
-    const status = progress > 0.9 ? 'watched' : 'watching';
-    updateWatchHistory('movie', String(id), {
-      status, progress, currentTime,
-      filename: localFile?.filename,
-      title: movie.title,
-      posterPath: movie.poster_path,
-    });
-  };
-
   if (loading) {
-    return (
-      <div className="loading-spinner">
-        <div className="spinner" />
-      </div>
-    );
+    return <div className="loading-spinner"><div className="spinner" /></div>;
   }
 
   if (!movie) {
-    return <div className="container section"><p>Movie not found.</p></div>;
+    return <div className="no-results">Movie not found.</div>;
   }
 
   const backdropUrl = getImageUrl(movie.backdrop_path, 'original');
-  const posterUrl = getImageUrl(movie.poster_path, 'w500');
-  const cast = movie.credits?.cast?.slice(0, 12) || [];
-  const director = movie.credits?.crew?.find((c) => c.job === 'Director');
-  const localStreamUrl = localFile ? getLocalMovieStreamUrl(localFile.filename) : null;
-  const playbackUrl = localStreamUrl;
-  const year = movie.release_date ? new Date(movie.release_date).getFullYear() : '';
+  const releaseYear = movie.release_date ? new Date(movie.release_date).getFullYear() : '';
+  const duration = movie.runtime ? `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m` : '';
+  const inWatchlist = currentUser?.watchlist?.movies?.[id];
+  const director = movie.credits?.crew?.find(c => c.job === 'Director')?.name;
+  const cast = movie.credits?.cast?.slice(0, 5).map(c => c.name).join(', ');
+  const genres = movie.genres?.map(g => g.name).join(', ');
+
+  const handlePlay = () => {
+    // If local, play local (VideoPlayer route). If not, try stream (iframe).
+    // For this demo, let's assume standard playback route for local.
+    // Stream URL is just a placeholder example or handled differently.
+    if (localMovie) {
+      // Navigate to player (handled by Link usually, but here via button)
+      // We'll wrap button in Link or use useNavigate
+    } else {
+      // Open stream overlay
+      setStreamUrl(`https://vidsrc.xyz/embed/movie/${id}`);
+    }
+  };
 
   return (
     <div className="detail-page">
-      <div
-        className="detail-backdrop"
-        style={{ backgroundImage: backdropUrl ? `url(${backdropUrl})` : 'none' }}
-      >
-        <div className="detail-backdrop-overlay" />
-        <div className="detail-breadcrumbs container">
-          <div className="episode-breadcrumbs">
-            <Link to="/">Home</Link>
-            <FaChevronRight className="breadcrumb-sep" />
-            <Link to="/movies">Movies</Link>
-            <FaChevronRight className="breadcrumb-sep" />
-            <span>{movie.title}</span>
+      {/* Hero Section */}
+      <div className="detail-hero" style={{ backgroundImage: `url(${backdropUrl})` }}>
+        <div className="detail-overlay" />
+        <div className="detail-overlay-left" />
+
+        <div className="detail-content-wrapper">
+          <div className="detail-header">
+            {/* Logo or Title Text */}
+            <h1 className="detail-title">{movie.title}</h1>
+
+            <div className="detail-meta-row">
+              <span className="match-score">98% Match</span>
+              <span className="year-tag">{releaseYear}</span>
+              <span className="maturity-rating">TV-MA</span>
+              <span className="duration-tag">{duration}</span>
+              <span className="hd-badge">HD</span>
+            </div>
+
+            <div className="detail-actions">
+              {localMovie ? (
+                <Link to={`/movie/${id}?autoplay=1`} className="btn-play">
+                  <FaPlay /> Play
+                </Link>
+              ) : (
+                <button onClick={handlePlay} className="btn-play">
+                  <FaPlay /> Stream
+                </button>
+              )}
+
+              <button
+                className="btn-secondary-action"
+                onClick={() => inWatchlist
+                  ? removeFromWatchlist('movie', id)
+                  : addToWatchlist('movie', id, movie.title, movie.poster_path)
+                }
+              >
+                {inWatchlist ? <FaCheck /> : <FaPlus />}
+                {inWatchlist ? 'My List' : 'My List'}
+              </button>
+
+              {/* Like / Rate (Visual only for now) */}
+              <button className="btn-secondary-action icon-only" title="Rate">
+                <FaRegThumbsUp />
+              </button>
+            </div>
+
+            <div className="detail-info-grid">
+              <div className="detail-left-col">
+                <p className="detail-overview">{movie.overview}</p>
+              </div>
+              <div className="detail-right-col">
+                <div className="detail-item-row">
+                  <span className="detail-item-label">Cast:</span>
+                  <span className="detail-item-value">{cast}</span>
+                </div>
+                <div className="detail-item-row">
+                  <span className="detail-item-label">Genres:</span>
+                  <span className="detail-item-value">{genres}</span>
+                </div>
+                {director && (
+                  <div className="detail-item-row">
+                    <span className="detail-item-label">This movie is:</span>
+                    <span className="detail-item-value">Violent, Dark</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="detail-play-container">
-          <button className="play-button" onClick={() => setShowPlayer(true)}>
-            <FaPlay />
-          </button>
-          <p className="play-label">{localFile ? 'Watch Now' : 'Stream Online'}</p>
         </div>
       </div>
 
-      {showPlayer && (
-        playbackUrl ? (
-          <NetflixPlayer
-            src={playbackUrl}
-            title={movie.title}
-            onClose={() => setShowPlayer(false)}
-            onProgress={handleProgress}
-            startTime={resumeTime || undefined}
-            subtitleUrl={subtitleUrl}
-          />
-        ) : (
-          <div className="stream-overlay">
-            <button className="stream-close" onClick={() => setShowPlayer(false)}>&times;</button>
-            <iframe
-              src={`https://mapple.mov/watch/movie/${id}`}
-              className="stream-iframe"
-              allowFullScreen
-              allow="autoplay; encrypted-media"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-            />
+      {/* Recommendations */}
+      {recommendations.length > 0 && (
+        <div className="recommendations-section">
+          <h2>More Like This</h2>
+          <div className="nf-grid-library">
+            {recommendations.slice(0, 12).map(m => (
+              <MediaCard key={m.id} item={m} type="movie" badge="cloud" />
+            ))}
           </div>
-        )
+        </div>
       )}
 
-      <div className="detail-content">
-        <div className="container">
-          <div className="detail-grid">
-            <div className="detail-poster">
-              {posterUrl ? (
-                <img src={posterUrl} alt={movie.title} />
-              ) : (
-                <div className="detail-no-poster">No Poster</div>
-              )}
-            </div>
-            <div className="detail-info">
-              <h1 className="detail-title">
-                {movie.title}
-                {isWatched && <span className="detail-watched-badge"><FaCheckCircle /> Watched</span>}
-              </h1>
-              {movie.tagline && <p className="detail-tagline">{movie.tagline}</p>}
-              <div className="detail-meta">
-                <span className="detail-rating">
-                  <FaStar /> {movie.vote_average?.toFixed(1)}
-                </span>
-                {movie.runtime > 0 && (
-                  <span className="detail-runtime">
-                    <FaClock /> {Math.floor(movie.runtime / 60)}h {movie.runtime % 60}m
-                  </span>
-                )}
-                <span className="detail-date">
-                  <FaCalendar /> {movie.release_date}
-                </span>
-              </div>
-              <div className="detail-actions-stack">
-                {hasOfflineDownload ? (
-                  <div className="local-badge">
-                    <FaHdd /> MP4 downloaded
-                  </div>
-                ) : localFile ? (
-                  <div className="local-badge">
-                    <FaHdd /> Available on your drive
-                  </div>
-                ) : !localSearching && (
-                  <div className="download-badge">
-                    Not on your drive — download to watch
-                  </div>
-                )}
-                {localFile && localStreamUrl && (
-                  <SaveOfflineButton
-                    cacheKey={`movie-${id}`}
-                    streamUrl={localStreamUrl}
-                    metadata={{
-                      title: movie.title,
-                      posterPath: movie.poster_path,
-                      type: 'movie',
-                      linkTo: `/movie/${id}`,
-                    }}
-                  />
-                )}
-                {(() => {
-                  const inWatchlist = currentUser?.watchlist?.movies?.[id];
-                  return (
-                    <button
-                      className={`watchlist-btn${inWatchlist ? ' active' : ''}`}
-                      onClick={() => inWatchlist
-                        ? removeFromWatchlist('movie', id)
-                        : addToWatchlist('movie', id, movie.title, movie.poster_path)
-                      }
-                    >
-                      {inWatchlist ? <FaBookmark /> : <FaRegBookmark />}
-                      {inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
-                    </button>
-                  );
-                })()}
-                {currentUser && !isFiifi && !localFile && !localSearching && (
-                  <button
-                    className={`request-btn${requestSent ? ' sent' : ''}`}
-                    disabled={requestSent}
-                    onClick={async () => {
-                      await sendNotification(movie.title, id, 'Movie request');
-                      setRequestSent(true);
-                    }}
-                  >
-                    {requestSent ? <><FaCheckCircle /> Requested</> : <><FaEnvelope /> Request This</>}
-                  </button>
-                )}
-              </div>
-              <div className="detail-genres">
-                {movie.genres?.map((g) => (
-                  <span key={g.id} className="genre-tag">{g.name}</span>
-                ))}
-              </div>
-              {movie.overview && (
-                <div className="detail-overview">
-                  <h3>Overview</h3>
-                  <p>{movie.overview}</p>
-                </div>
-              )}
-              {director && (
-                <div className="detail-director">
-                  <strong>Director:</strong> {director.name}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {cast.length > 0 && (
-            <div className="detail-cast section">
-              <h2 className="section-title">Cast</h2>
-              <div className="cast-grid">
-                {cast.map((person) => (
-                  <div key={person.id} className="cast-card">
-                    <div className="cast-image">
-                      {person.profile_path ? (
-                        <img
-                          src={getImageUrl(person.profile_path, 'w185')}
-                          alt={person.name}
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="cast-no-image">No Photo</div>
-                      )}
-                    </div>
-                    <div className="cast-info">
-                      <p className="cast-name">{person.name}</p>
-                      <p className="cast-character">{person.character}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+      {/* Stream Overlay */}
+      {streamUrl && (
+        <div className="stream-overlay">
+          <button className="stream-close" onClick={() => setStreamUrl(null)}>×</button>
+          <iframe
+            src={streamUrl}
+            className="stream-iframe"
+            allowFullScreen
+            title="Stream"
+          />
         </div>
-      </div>
+      )}
     </div>
   );
 }

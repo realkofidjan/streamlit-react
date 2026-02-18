@@ -288,10 +288,26 @@ function Home() {
           </section>
         )}
 
+        {localMovieTmdb.length > 0 && (
+          <NetflixRow title="Your Movies" count={localMovieTmdb.length}>
+            {localMovieTmdb.map((m) => (
+              <MediaCard key={m.id} item={m} type="movie" badge="local" />
+            ))}
+          </NetflixRow>
+        )}
+
+        {localTvTmdb.length > 0 && (
+          <NetflixRow title="Your TV Shows" count={localTvTmdb.length}>
+            {localTvTmdb.map((s) => (
+              <MediaCard key={s.id} item={s} type="tv" badge={tvBadges[s.id] || 'local'} />
+            ))}
+          </NetflixRow>
+        )}
+
         {watchlistItems.length > 0 && (
           <NetflixRow title="My List" count={watchlistItems.length}>
             {watchlistItems.map((item) => (
-              <MediaCard key={`${item._type}-${item.id}`} item={item} type={item._type} />
+              <MediaCard key={`${item._type}-${item.id}`} item={item} type={parseInt(item._type) === item._type ? (item._type === 'movie' ? 'movie' : 'tv') : item._type} />
             ))}
           </NetflixRow>
         )}
@@ -308,22 +324,6 @@ function Home() {
                 <span className="offline-card-title">{v.title}</span>
                 <span className="offline-card-size">{formatFileSize(v.size)}</span>
               </Link>
-            ))}
-          </NetflixRow>
-        )}
-
-        {localMovieTmdb.length > 0 && (
-          <NetflixRow title="Your Movies" count={localMovieTmdb.length}>
-            {localMovieTmdb.map((m) => (
-              <MediaCard key={m.id} item={m} type="movie" badge="local" />
-            ))}
-          </NetflixRow>
-        )}
-
-        {localTvTmdb.length > 0 && (
-          <NetflixRow title="Your TV Shows" count={localTvTmdb.length}>
-            {localTvTmdb.map((s) => (
-              <MediaCard key={s.id} item={s} type="tv" badge={tvBadges[s.id] || 'local'} />
             ))}
           </NetflixRow>
         )}
