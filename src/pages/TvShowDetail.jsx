@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FaPlay, FaPlus, FaCheck, FaThumbsUp, FaRegThumbsUp, FaArrowLeft, FaChevronDown, FaHdd, FaCalendar } from 'react-icons/fa';
-import { getTvShowDetails, getTvSeasonDetails, getImageUrl } from '../services/tmdb';
+import { getTvShowDetails, getTvSeasonDetails, getSimilarTvShows, getImageUrl } from '../services/tmdb';
 import { searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes } from '../services/media';
 import { useUser } from '../contexts/UserContext';
+import MediaCard from '../components/MediaCard';
 import './TvShowDetail.css';
 
 function TvShowDetail() {
@@ -18,6 +19,16 @@ function TvShowDetail() {
   const [localEpKeys, setLocalEpKeys] = useState(new Set()); // "s1-e1"
   const [localEpisodeCount, setLocalEpisodeCount] = useState(0);
   const [isLocalShow, setIsLocalShow] = useState(false);
+  const [recommendations, setRecommendations] = useState([]);
+
+  // Fetch Recommendations independently
+  useEffect(() => {
+    if (id) {
+      getSimilarTvShows(id)
+        .then(res => setRecommendations(res.data.results || []))
+        .catch(() => { });
+    }
+  }, [id]);
 
   // Initial Fetch
   useEffect(() => {
@@ -231,7 +242,21 @@ function TvShowDetail() {
           })}
         </div>
       </div>
-    </div>
+
+      {/* Recommendations */}
+      {
+        recommendations.length > 0 && (
+          <div className="episodes-section" style={{ marginBottom: '2rem' }}>
+            <h2 className="episodes-title" style={{ marginBottom: '1rem' }}>More Like This</h2>
+            <div className="nf-grid-library">
+              {recommendations.slice(0, 12).map(s => (
+                <MediaCard key={s.id} item={s} type="tv" badge="cloud" />
+              ))}
+            </div>
+          </div>
+        )
+      }
+    </div >
   );
 }
 

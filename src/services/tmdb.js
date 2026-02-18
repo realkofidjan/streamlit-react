@@ -41,6 +41,12 @@ export const getTvSeasonDetails = (tvId, seasonNumber) =>
 export const getTvEpisodeDetails = (tvId, seasonNumber, episodeNumber) =>
   api.get(`/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}`);
 
+export const getSimilarMovies = (movieId) =>
+  api.get(`/movie/${movieId}/recommendations`);
+
+export const getSimilarTvShows = (tvId) =>
+  api.get(`/tv/${tvId}/recommendations`);
+
 export const getRecommendedMovies = (page = 1) =>
   api.get('/discover/movie', {
     params: {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FaPlay, FaPlus, FaCheck, FaThumbsUp, FaRegThumbsUp, FaVolumeMute, FaVolumeUp, FaArrowLeft, FaDownload, FaCheckCircle } from 'react-icons/fa';
-import { getMovieDetails, getRecommendedMovies, getImageUrl } from '../services/tmdb';
+import { getMovieDetails, getSimilarMovies, getImageUrl } from '../services/tmdb';
 import { searchLocalMovies } from '../services/media';
 import { useUser } from '../contexts/UserContext';
 import MediaCard from '../components/MediaCard';
@@ -23,7 +23,7 @@ function MovieDetail() {
       try {
         const [movieRes, recRes] = await Promise.all([
           getMovieDetails(id),
-          getRecommendedMovies(id),
+          getSimilarMovies(id).catch(() => ({ data: { results: [] } })),
         ]);
         setMovie(movieRes.data);
         setRecommendations(recRes.data.results || []);
