@@ -134,6 +134,14 @@ function TvSeasonDetail() {
                           <FaCheckCircle /> Watched
                         </div>
                       )}
+                      {!epWatched && isLocal && watchHistory[epKey]?.progress > 0 && (
+                        <div className="episode-progress-bar">
+                          <div
+                            className="episode-progress-fill"
+                            style={{ width: `${Math.min(watchHistory[epKey].progress * 100, 100)}%` }}
+                          />
+                        </div>
+                      )}
                     </div>
                     <div className="episode-info">
                       <h4>

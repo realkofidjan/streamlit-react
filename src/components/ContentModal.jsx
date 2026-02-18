@@ -433,7 +433,17 @@ function ContentModal({ content, onClose, show }) {
                                                         onClick={() => handleEpisodePlay(selectedSeason, ep.episode_number)}
                                                     >
                                                         <span className="modal-ep-num">{ep.episode_number}</span>
-                                                        <img src={getImageUrl(ep.still_path, 'w300')} alt={ep.name} className="modal-ep-thumb" />
+                                                        <div className="modal-ep-thumb-wrapper">
+                                                            <img src={getImageUrl(ep.still_path, 'w300')} alt={ep.name} className="modal-ep-thumb" />
+                                                            {currentUser?.watchHistory?.episodes?.[`${item.id}-s${selectedSeason}e${ep.episode_number}`]?.progress > 0 && (
+                                                                <div className="modal-ep-progress">
+                                                                    <div
+                                                                        className="modal-ep-progress-fill"
+                                                                        style={{ width: `${Math.min(currentUser.watchHistory.episodes[`${item.id}-s${selectedSeason}e${ep.episode_number}`].progress * 100, 100)}%` }}
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                         <div className="modal-ep-info">
                                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                                 <span className="modal-ep-title">{ep.name}</span>
@@ -441,6 +451,7 @@ function ContentModal({ content, onClose, show }) {
                                                             </div>
                                                             <span className="modal-ep-desc">{ep.overview}</span>
                                                         </div>
+
                                                         {hasLocal ? (
                                                             <button className="ep-play-btn" onClick={(e) => { e.stopPropagation(); handleEpisodePlay(selectedSeason, ep.episode_number); }}>
                                                                 <FaPlay />
