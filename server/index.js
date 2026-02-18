@@ -57,6 +57,11 @@ function writeNotifications(notifs) {
   fs.writeFileSync(NOTIFICATIONS_FILE, JSON.stringify(notifs, null, 2));
 }
 
+// Basic health check
+app.get('/', (req, res) => {
+  res.send('StreamIt Media Server: Online');
+});
+
 const MIME_TYPES = {
   '.mp4': 'video/mp4',
   '.mkv': 'video/x-matroska',
