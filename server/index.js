@@ -63,7 +63,7 @@ app.get('/', (req, res) => {
 });
 
 const MIME_TYPES = {
-  '.mp4': 'video/mp4',
+  '.mp4': 'application/octet-stream', // Was 'video/mp4' - changed to bypass Cloudflare buffering
   '.mkv': 'video/x-matroska',
   '.webm': 'video/webm',
   '.avi': 'video/x-msvideo',
