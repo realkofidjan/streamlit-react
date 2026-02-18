@@ -31,7 +31,7 @@ export const searchLocalMovies = (query) =>
   getApi().get('/api/movies/search', { params: { q: query } });
 
 export const getLocalMovieStreamUrl = (filename) =>
-  `${getMediaUrl()}/api/movies/stream/${encodeURIComponent(filename)}`;
+  `${getMediaUrl()}/api/movies/stream/${encodeURIComponent(filename)}?_cb=${Date.now()}`;
 
 // TV Shows
 export const searchLocalTvShows = (query) =>
@@ -44,6 +44,6 @@ export const getLocalTvEpisodes = (showName, seasonName) =>
   getApi().get(`/api/tv/${encodeURIComponent(showName)}/${encodeURIComponent(seasonName)}/episodes`);
 
 export const getLocalTvStreamUrl = (showName, seasonName, filename) =>
-  `${getMediaUrl()}/api/tv/${encodeURIComponent(showName)}/${encodeURIComponent(seasonName)}/stream/${encodeURIComponent(filename)}`;
+  `${getMediaUrl()}/api/tv/${encodeURIComponent(showName)}/${encodeURIComponent(seasonName)}/stream/${encodeURIComponent(filename)}?_cb=${Date.now()}`;
 
 export const getLibrary = () => getApi().get('/api/library');
