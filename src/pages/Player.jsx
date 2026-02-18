@@ -230,7 +230,8 @@ function Player() {
     const handleProgress = ({ currentTime, duration }) => {
         if (!currentUser || !duration) return;
         const progress = currentTime / duration;
-        const status = progress > 0.9 ? 'watched' : 'watching';
+        const threshold = type === 'movie' ? 0.9 : 0.97;
+        const status = progress > threshold ? 'watched' : 'watching';
 
         if (type === 'movie') {
             updateWatchHistory('movie', tmdbId, {

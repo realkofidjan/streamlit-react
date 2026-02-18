@@ -82,7 +82,7 @@ function AllTvShows() {
                     const totalEp = detail.number_of_episodes;
                     // Count watched episodes in history
                     const watchedCount = Object.keys(currentUser?.watchHistory?.episodes || {})
-                      .filter(k => k.startsWith(`${best.id}-`) && currentUser.watchHistory.episodes[k].progress >= 0.95)
+                      .filter(k => k.startsWith(`${best.id}-`) && currentUser.watchHistory.episodes[k].progress >= 0.97)
                       .length;
                     if (watchedCount >= totalEp) {
                       isFullyWatched = true;

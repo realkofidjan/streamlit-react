@@ -11,7 +11,7 @@ function MediaCard({ item, type, badge, onClick }) {
   let isWatched = false;
   if (isLocal && type === 'movie') {
     const entry = watchHistory.movies?.[String(item.id)];
-    if (entry && entry.progress >= 0.96) isWatched = true;
+    if (entry && entry.progress >= 0.9) isWatched = true;
   }
   if (isLocal && type === 'tv') {
     // Only show "Watched" if explicitly passed as true (calculated by parent)

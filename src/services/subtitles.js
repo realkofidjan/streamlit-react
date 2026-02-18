@@ -1,8 +1,6 @@
 import axios from 'axios';
 
-function getMediaUrl() {
-    return localStorage.getItem('mediaServerUrl') || import.meta.env.VITE_MEDIA_SERVER || 'http://localhost:4000';
-}
+import { getMediaUrl } from './media';
 
 /**
  * Search for subtitles by TMDB ID via our server proxy.

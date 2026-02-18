@@ -264,7 +264,7 @@ function ContentModal({ content, onClose, show }) {
         if (!currentUser || !item) return null;
         if (isMovie) {
             const progress = currentUser.watchHistory?.movies?.[String(item.id)];
-            if (progress && progress.currentTime > 0 && progress.progress < 0.95) {
+            if (progress && progress.currentTime > 0 && progress.progress < 0.9) {
                 return { time: progress.currentTime, pct: progress.progress, isResume: true };
             }
         } else if (item.seasons || seasonDetails) {
@@ -298,7 +298,7 @@ function ContentModal({ content, onClose, show }) {
                 const lastWatched = watchedEpisodes[0];
 
                 // If the last watched episode is not finished (progress < 95%), resume it
-                if (lastWatched.progress < 0.95) {
+                if (lastWatched.progress < 0.97) {
                     return {
                         type: 'episode',
                         season: lastWatched.season,
@@ -518,7 +518,7 @@ function ContentModal({ content, onClose, show }) {
                                                     const hasLocal = localEpisodeSet.has(ep.episode_number);
                                                     const epKey = `${item.id}-s${selectedSeason}e${ep.episode_number}`;
                                                     const epProgress = currentUser?.watchHistory?.episodes?.[epKey];
-                                                    const resumeTime = (epProgress && epProgress.currentTime > 0 && epProgress.progress < 0.95) ? epProgress.currentTime : 0;
+                                                    const resumeTime = (epProgress && epProgress.currentTime > 0 && epProgress.progress < 0.97) ? epProgress.currentTime : 0;
 
                                                     return (
                                                         <div
