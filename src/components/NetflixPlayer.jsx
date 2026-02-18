@@ -198,7 +198,7 @@ function NetflixPlayer({
     if (!onNextEpisode || !nextEpisodeInfo || nextCancelled) return;
     if (duration <= 0) return;
     const progress = currentTime / duration;
-    if (progress >= 0.96 && !showNextOverlay) {
+    if (progress >= 0.99 && !showNextOverlay) {
       setShowNextOverlay(true);
       setCountdown(10);
     }

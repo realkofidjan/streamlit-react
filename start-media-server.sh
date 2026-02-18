@@ -26,7 +26,7 @@ echo "  Media server running (PID: $SERVER_PID)"
 echo "[2/2] Starting Cloudflare Tunnel..."
 echo "  (This gives you a public URL for your media server)"
 echo ""
-cloudflared tunnel --url http://localhost:$PORT 2>&1 &
+cloudflared tunnel --protocol http1.1 --url http://localhost:$PORT 2>&1 &
 TUNNEL_PID=$!
 sleep 5
 

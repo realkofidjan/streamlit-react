@@ -319,6 +319,13 @@ app.put('/api/users/:id/profile', (req, res) => {
     if (user.pin !== String(currentPin)) return res.status(401).json({ error: 'Current PIN is incorrect' });
     user.pin = String(newPin);
   }
+  
+  console.log(`[PROFILE UPDATE] User ${user.username} (${user.id}) updated:`, {
+    username: user.username,
+    emoji: user.emoji,
+    avatar: user.avatar
+  });
+
   writeUsers(users);
   const { pin: _, ...safe } = user;
   res.json(safe);
