@@ -14,10 +14,8 @@ function MediaCard({ item, type, badge, onClick }) {
     if (entry && entry.progress >= 0.96) isWatched = true;
   }
   if (isLocal && type === 'tv') {
-    const episodes = watchHistory.episodes || {};
-    isWatched = Object.entries(episodes).some(
-      ([key, val]) => key.startsWith(`${item.id}-`) && val.progress >= 0.96
-    );
+    // Only show "Watched" if explicitly passed as true (calculated by parent)
+    isWatched = item.isFullyWatched === true;
   }
 
   const title = type === 'movie' ? item.title : item.name;

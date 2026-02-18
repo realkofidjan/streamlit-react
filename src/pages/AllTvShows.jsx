@@ -74,7 +74,23 @@ function AllTvShows() {
                   }
                 } catch { }
 
-                return { ...best, localName: s.name, badge: badge || 'local' };
+                // Check if fully watched
+                let isFullyWatched = false;
+                try {
+                  // Using detail from above
+                  if (detail && detail.number_of_episodes > 0) {
+                    const totalEp = detail.number_of_episodes;
+                    // Count watched episodes in history
+                    const watchedCount = Object.keys(currentUser?.watchHistory?.episodes || {})
+                      .filter(k => k.startsWith(`${best.id}-`) && currentUser.watchHistory.episodes[k].progress >= 0.95)
+                      .length;
+                    if (watchedCount >= totalEp) {
+                      isFullyWatched = true;
+                    }
+                  }
+                } catch { }
+
+                return { ...best, localName: s.name, badge: badge || 'local', isFullyWatched };
               }
             } catch { /* skip */ }
             return null;

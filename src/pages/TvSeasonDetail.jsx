@@ -129,6 +129,11 @@ function TvSeasonDetail() {
                       ) : (
                         <div className="episode-no-still">Ep {ep.episode_number}</div>
                       )}
+                      {epWatched && (
+                        <div className="episode-overlay-watched">
+                          <FaCheckCircle /> Watched
+                        </div>
+                      )}
                     </div>
                     <div className="episode-info">
                       <h4>
@@ -144,9 +149,6 @@ function TvSeasonDetail() {
                       {ep.air_date && <span className="episode-date">{ep.air_date}</span>}
                     </div>
                   </Link>
-                  {epWatched && (
-                    <span className="episode-watched-badge"><FaCheckCircle /> Watched</span>
-                  )}
                   <div className="episode-action">
                     {isLocal ? (
                       <Link

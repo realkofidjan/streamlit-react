@@ -130,17 +130,10 @@
   }
 }
 
-@media (max-width: 480px) {
-  .nf-media-grid {
-    grid-template-columns: repeat(3, 1fr);
-    /* Force 3 columns on mobile */
-    gap: 1.5rem 0.5rem;
-    padding: 0 3%;
-  }
-
-  .all-media-title {
-    font-size: 1.5rem;
-  }
+.all-media-page {
+  padding-top: 7rem !important;
+  /* Increased to fix overlap */
+}
 }
 
 .all-media-empty {

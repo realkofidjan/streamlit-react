@@ -120,6 +120,22 @@
   object-fit: cover;
 }
 
+.episode-overlay-watched {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #2ecc71;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  z-index: 2;
+}
+
 .episode-no-still {
   width: 100%;
   height: 100%;
