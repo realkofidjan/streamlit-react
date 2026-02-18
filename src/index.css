@@ -23,7 +23,7 @@
 }
 
 body {
-  font-family: 'Roboto', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   background-color: var(--bg-dark);
   color: var(--text-primary);
   line-height: 1.6;
@@ -124,18 +124,21 @@ body[data-dpad-mode] {
   gap: 0.5rem;
 }
 
-.server-alert + .header {
+.server-alert+.header {
   top: 38px;
 }
 
 /* Touch-friendly tap targets */
 @media (max-width: 768px) {
-  button, a {
+
+  button,
+  a {
     -webkit-tap-highlight-color: transparent;
   }
 
   /* Prevent horizontal overflow on mobile */
-  html, body {
+  html,
+  body {
     overflow-x: hidden;
   }
 }

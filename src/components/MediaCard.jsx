@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { FaStar, FaHdd, FaCloud, FaCheckCircle } from 'react-icons/fa';
+import { FaHdd, FaCloud, FaCheckCircle } from 'react-icons/fa';
 import { getImageUrl } from '../services/tmdb';
 import { useUser } from '../contexts/UserContext';
 import './MediaCard.css';
@@ -8,7 +8,6 @@ function MediaCard({ item, type, badge }) {
   const { currentUser } = useUser();
   const watchHistory = currentUser?.watchHistory || { movies: {}, episodes: {} };
 
-  // Check if this local item has been watched (>= 95% progress)
   const isLocal = badge === 'local' || (badge && typeof badge === 'object');
   let isWatched = false;
   if (isLocal && type === 'movie') {
@@ -16,51 +15,48 @@ function MediaCard({ item, type, badge }) {
     if (entry && entry.progress >= 0.96) isWatched = true;
   }
   if (isLocal && type === 'tv') {
-    // Check if any episode of this show has been fully watched
     const episodes = watchHistory.episodes || {};
     isWatched = Object.entries(episodes).some(
       ([key, val]) => key.startsWith(`${item.id}-`) && val.progress >= 0.96
     );
   }
+
   const title = type === 'movie' ? item.title : item.name;
-  const date = type === 'movie' ? item.release_date : item.first_air_date;
   const link = type === 'movie' ? `/movie/${item.id}` : `/tv/${item.id}`;
   const posterUrl = getImageUrl(item.poster_path, 'w342');
-  const year = date ? new Date(date).getFullYear() : 'N/A';
 
   return (
-    <Link to={link} className="media-card">
-      <div className="media-card-poster">
+    <Link to={link} className="nf-card">
+      <div className="nf-card-img">
         {posterUrl ? (
           <img src={posterUrl} alt={title} loading="lazy" />
         ) : (
-          <div className="media-card-no-image">No Image</div>
+          <div className="nf-card-no-img">{title}</div>
         )}
-        <div className="media-card-overlay">
-          <div className="media-card-rating">
-            <FaStar />
-            <span>{item.vote_average?.toFixed(1)}</span>
-          </div>
-        </div>
+
+        {/* Source icon */}
         {(badge === 'local' || (badge && typeof badge === 'object')) && (
-          <div className="media-card-drive-icon"><FaHdd /></div>
+          <span className="nf-card-icon nf-card-icon-local"><FaHdd /></span>
         )}
         {badge === 'cloud' && (
-          <div className="media-card-drive-icon cloud"><FaCloud /></div>
+          <span className="nf-card-icon nf-card-icon-cloud"><FaCloud /></span>
         )}
+
+        {/* Status badges */}
         {badge && typeof badge === 'object' && badge.type === 'new-episodes' && (
-          <div className="media-card-badge-bottom new-aired">New Aired</div>
+          <span className="nf-card-badge nf-card-badge-new">New Episodes</span>
         )}
         {badge && typeof badge === 'object' && badge.type === 'coming-soon' && (
-          <div className="media-card-badge-bottom airing-soon">Airing Soon</div>
+          <span className="nf-card-badge nf-card-badge-soon">Coming Soon</span>
         )}
         {isWatched && (
-          <div className="media-card-watched-badge"><FaCheckCircle /> Watched</div>
+          <span className="nf-card-badge nf-card-badge-watched"><FaCheckCircle /> Watched</span>
         )}
-      </div>
-      <div className="media-card-info">
-        <h3 className="media-card-title">{title}</h3>
-        <p className="media-card-year">{year}</p>
+
+        {/* Hover overlay with title */}
+        <div className="nf-card-hover">
+          <span className="nf-card-title">{title}</span>
+        </div>
       </div>
     </Link>
   );

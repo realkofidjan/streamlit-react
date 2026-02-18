@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FaFilm, FaCog, FaSignOutAlt, FaBell, FaTimes, FaBars, FaHome, FaVideo, FaTv, FaSearch } from 'react-icons/fa';
 import { useUser } from '../contexts/UserContext';
+import { searchMovies, searchTvShows, getImageUrl } from '../services/tmdb';
 import './Header.css';
 
 function Header() {
@@ -10,14 +11,16 @@ function Header() {
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef(null);
   const menuRef = useRef(null);
-  const searchInputRef = useRef(null);
+  const searchRef = useRef(null);
+  const searchTimerRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const [scrolled, setScrolled] = useState(false);
 
   // Header background on scroll
   useEffect(() => {
@@ -29,6 +32,9 @@ function Header() {
   // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false);
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchFocused(false);
   }, [location.pathname]);
 
   // Lock body scroll when mobile menu is open
@@ -53,6 +59,17 @@ function Header() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [mobileMenuOpen]);
 
+  // Close search on outside click
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setSearchFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
   useEffect(() => {
     if (!isFiifi) return;
     const load = async () => {
@@ -64,7 +81,7 @@ function Header() {
     return () => clearInterval(interval);
   }, [isFiifi, getNotifications]);
 
-  // Close dropdown on outside click
+  // Close notif dropdown on outside click
   useEffect(() => {
     if (!showDropdown) return;
     const handleClick = (e) => {
@@ -81,6 +98,75 @@ function Header() {
     setNotifications(remaining);
   };
 
+  // Live search — debounce 300ms, fetch both movies + shows, sort by date
+  const performSearch = useCallback(async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    try {
+      const [moviesRes, showsRes] = await Promise.all([
+        searchMovies(query).catch(() => ({ data: { results: [] } })),
+        searchTvShows(query).catch(() => ({ data: { results: [] } })),
+      ]);
+
+      const movies = (moviesRes.data.results || []).slice(0, 10).map((m) => ({
+        id: m.id,
+        title: m.title,
+        poster_path: m.poster_path,
+        date: m.release_date || '',
+        type: 'movie',
+        year: m.release_date ? new Date(m.release_date).getFullYear() : null,
+      }));
+
+      const shows = (showsRes.data.results || []).slice(0, 10).map((s) => ({
+        id: s.id,
+        title: s.name,
+        poster_path: s.poster_path,
+        date: s.first_air_date || '',
+        type: 'tv',
+        year: s.first_air_date ? new Date(s.first_air_date).getFullYear() : null,
+      }));
+
+      const combined = [...movies, ...shows]
+        .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+        .slice(0, 5);
+
+      setSearchResults(combined);
+    } catch {
+      setSearchResults([]);
+    }
+  }, []);
+
+  const handleSearchInput = (e) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+    clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => performSearch(val), 300);
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      navigate(`/search?type=movie&query=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery('');
+      setSearchResults([]);
+      setSearchFocused(false);
+    }
+    if (e.key === 'Escape') {
+      setSearchQuery('');
+      setSearchResults([]);
+      setSearchFocused(false);
+    }
+  };
+
+  const goToResult = (r) => {
+    const path = r.type === 'movie' ? `/movie/${r.id}` : `/tv/${r.id}`;
+    navigate(path);
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchFocused(false);
+  };
+
   return (
     <>
       <header className={`header${scrolled ? ' scrolled' : ''}`}>
@@ -89,48 +175,56 @@ function Header() {
             <FaFilm className="logo-icon" />
             <span>StreamIt</span>
           </Link>
-          <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen((p) => !p)} aria-label="Toggle menu">
-            {mobileMenuOpen ? <FaTimes /> : <FaBars />}
-          </button>
-          <nav className="nav-links nav-desktop">
+
+          <nav className="nav-links-left nav-desktop">
             <Link to="/">Home</Link>
             <Link to="/movies">Movies</Link>
             <Link to="/tv-shows">TV Shows</Link>
-            <div className={`header-search ${searchOpen ? 'open' : ''}`}>
-              <button
-                className="header-search-icon"
-                onClick={() => {
-                  setSearchOpen(true);
-                  setTimeout(() => searchInputRef.current?.focus(), 100);
-                }}
-              >
-                <FaSearch />
-              </button>
-              {searchOpen && (
-                <input
-                  ref={searchInputRef}
-                  className="header-search-input"
-                  type="text"
-                  placeholder="Titles, people, genres"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && searchQuery.trim()) {
-                      navigate(`/search?type=movie&query=${encodeURIComponent(searchQuery.trim())}`);
-                      setSearchOpen(false);
-                      setSearchQuery('');
-                    }
-                    if (e.key === 'Escape') {
-                      setSearchOpen(false);
-                      setSearchQuery('');
-                    }
-                  }}
-                  onBlur={() => {
-                    if (!searchQuery) setSearchOpen(false);
-                  }}
-                />
-              )}
+          </nav>
+
+          {/* Centered Search */}
+          <div className="header-search-wrapper" ref={searchRef}>
+            <div className="header-search-bar">
+              <FaSearch className="header-search-icon" />
+              <input
+                type="text"
+                className="header-search-input"
+                placeholder="Search titles..."
+                value={searchQuery}
+                onChange={handleSearchInput}
+                onFocus={() => setSearchFocused(true)}
+                onKeyDown={handleSearchKeyDown}
+              />
             </div>
+            {searchFocused && searchResults.length > 0 && (
+              <div className="header-search-dropdown">
+                {searchResults.map((r) => (
+                  <button
+                    key={`${r.type}-${r.id}`}
+                    className="header-search-result"
+                    onClick={() => goToResult(r)}
+                  >
+                    <div className="search-result-poster">
+                      {r.poster_path ? (
+                        <img src={getImageUrl(r.poster_path, 'w92')} alt="" />
+                      ) : (
+                        <div className="search-result-no-img" />
+                      )}
+                    </div>
+                    <div className="search-result-info">
+                      <span className="search-result-title">{r.title}</span>
+                      <span className="search-result-meta">
+                        {r.type === 'movie' ? 'Movie' : 'TV Show'}
+                        {r.year && ` · ${r.year}`}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="nav-links-right nav-desktop">
             {isFiifi && (
               <div className="notif-wrapper" ref={dropdownRef}>
                 <button
@@ -178,7 +272,11 @@ function Header() {
                 </button>
               </div>
             )}
-          </nav>
+          </div>
+
+          <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen((p) => !p)} aria-label="Toggle menu">
+            {mobileMenuOpen ? <FaTimes /> : <FaBars />}
+          </button>
         </div>
       </header>
 
