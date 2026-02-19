@@ -63,9 +63,13 @@ function AnimatedRoutes() {
   );
 }
 
+import { useInactivity } from './hooks/useInactivity';
+
 function AppRoutes() {
   const { currentUser } = useUser();
 
+  // Enable inactivity timer
+  useInactivity();
 
   return (
     <>

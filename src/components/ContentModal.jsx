@@ -355,6 +355,13 @@ function ContentModal({ content, onClose, show }) {
     };
 
     // Close stream overlay
+    const [showAdWarning, setShowAdWarning] = useState(true);
+
+    // Reset warning when stream opens
+    useEffect(() => {
+        if (streamUrl) setShowAdWarning(true);
+    }, [streamUrl]);
+
     if (streamUrl) {
         return (
             <div className="content-modal-overlay" ref={overlayRef}>
@@ -362,6 +369,45 @@ function ContentModal({ content, onClose, show }) {
                     <button className="stream-close-btn" onClick={() => setStreamUrl(null)}>
                         <FaTimes /> Back to Details
                     </button>
+
+                    {showAdWarning && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '60px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            background: 'rgba(229, 9, 20, 0.9)',
+                            color: '#fff',
+                            padding: '10px 20px',
+                            borderRadius: '4px',
+                            zIndex: 100,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                            maxWidth: '90%'
+                        }}>
+                            <span>⚠️ <strong>Note:</strong> Ads are from the provider, not us. Please close them to play.</span>
+                            <button
+                                onClick={() => setShowAdWarning(false)}
+                                style={{
+                                    background: 'rgba(0,0,0,0.3)',
+                                    border: 'none',
+                                    color: '#fff',
+                                    borderRadius: '50%',
+                                    width: '24px',
+                                    height: '24px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                            >
+                                <FaTimes size={12} />
+                            </button>
+                        </div>
+                    )}
+
                     <iframe
                         src={streamUrl}
                         className="stream-iframe"
