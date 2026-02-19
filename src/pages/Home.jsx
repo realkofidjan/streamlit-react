@@ -201,15 +201,63 @@ function Home() {
   const filteredRecMovies = recommendedMovies.filter((m) => !localMovieIds.has(m.id));
   const filteredRecTv = recommendedTv.filter((s) => !localTvIds.has(s.id));
 
+  /* ===== Logic for Continue Watching & Next Episode ===== */
   const watchHistory = currentUser?.watchHistory || { movies: {}, episodes: {} };
+
+  // 1. Get currently "watching" items
+  const watchingMovies = Object.entries(watchHistory.movies)
+    .filter(([, v]) => v.status === 'watching')
+    .map(([id, v]) => ({ ...v, mediaId: id, type: 'movie' }));
+
+  const watchingEpisodes = Object.entries(watchHistory.episodes)
+    .filter(([, v]) => v.status === 'watching')
+    .map(([id, v]) => ({ ...v, mediaId: id, type: 'episode' }));
+
+  // 2. Logic for "Next Episode": specific to TV Shows
+  // If a show has NO "watching" episodes, find the latest "watched" episode and suggest the Next one.
+  const nextUpEpisodes = [];
+  const watchingShowIds = new Set(watchingEpisodes.map(e => e.showId).filter(Boolean));
+
+  // Group watched episodes by Show ID
+  const latestWatchedByShow = {};
+  Object.values(watchHistory.episodes).forEach(ep => {
+    if (ep.status === 'watched' && ep.showId) {
+      const current = latestWatchedByShow[ep.showId];
+      // Keep the most recently watched one
+      if (!current || new Date(ep.updatedAt) > new Date(current.updatedAt)) {
+        latestWatchedByShow[ep.showId] = ep;
+      }
+    }
+  });
+
+  // Generate "Next Up" items
+  for (const [showId, lastEp] of Object.entries(latestWatchedByShow)) {
+    // Skip if we are mid-episode on this show already
+    if (watchingShowIds.has(showId)) continue;
+
+    const nextEpNum = parseInt(lastEp.episode) + 1;
+    nextUpEpisodes.push({
+      mediaId: `${showId}-s${lastEp.season}e${nextEpNum}`,
+      showId: showId,
+      season: lastEp.season,
+      episode: nextEpNum,
+      type: 'episode',
+      status: 'next-up', // Custom status for UI
+      progress: 0,
+      // We don't know the real title of the next episode here without querying TMDB/Local
+      // But we can just show "Season X Episode Y"
+      title: `S${lastEp.season} E${nextEpNum}`,
+      posterPath: lastEp.posterPath, // Reuse show poster
+      updatedAt: lastEp.updatedAt // Sort by when we finished the last one
+    });
+  }
+
   const continueWatchingRaw = [
-    ...Object.entries(watchHistory.movies)
-      .filter(([, v]) => v.status === 'watching')
-      .map(([id, v]) => ({ ...v, mediaId: id, type: 'movie' })),
-    ...Object.entries(watchHistory.episodes)
-      .filter(([, v]) => v.status === 'watching')
-      .map(([id, v]) => ({ ...v, mediaId: id, type: 'episode' })),
+    ...watchingMovies,
+    ...watchingEpisodes,
+    ...nextUpEpisodes
   ].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
   const seenKeys = new Set();
   const continueWatching = continueWatchingRaw.filter((item) => {
     const key = item.type === 'episode' && item.showId ? `show-${item.showId}` : item.mediaId;
@@ -300,17 +348,26 @@ function Home() {
                       linkTo = `/play?type=movie&id=${item.mediaId}`;
                     }
                   }
+                  const isNextUp = item.status === 'next-up';
                   return (
-                    <Link key={item.mediaId} to={linkTo} className="continue-card">
+                    <Link key={item.mediaId} to={linkTo} className={`continue-card ${isNextUp ? 'next-up-card' : ''}`}>
                       {item.posterPath ? (
                         <img src={getImageUrl(item.posterPath, 'w300')} alt={item.title} />
                       ) : (
                         <div className="continue-no-img">{item.title}</div>
                       )}
-                      <div className="continue-progress">
-                        <div className="continue-bar" style={{ width: `${(item.progress || 0) * 100}%` }} />
+
+                      {/* Only show progress bar if not "Next Up" */}
+                      {!isNextUp && (
+                        <div className="continue-progress">
+                          <div className="continue-bar" style={{ width: `${(item.progress || 0) * 100}%` }} />
+                        </div>
+                      )}
+
+                      <div className="continue-overlay">
+                        {isNextUp && <div className="next-up-badge">Next Episode</div>}
+                        <div className="continue-title">{item.title}</div>
                       </div>
-                      <span className="continue-title">{item.title}</span>
                     </Link>
                   );
                 })}
