@@ -2,8 +2,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play, Pause, X, Maximize, Minimize, Volume2, Volume1, VolumeX,
-  SkipBack, SkipForward, List, ChevronDown, ChevronLeft, SkipForward as NextIcon,
-  Flag, MonitorSpeaker, ArrowLeft
+  List, ChevronDown, ChevronLeft, SkipForward as NextIcon,
+  Flag, MonitorSpeaker, ArrowLeft, RotateCcw, RotateCw
 } from 'lucide-react';
 import './NetflixPlayer.css';
 
@@ -526,11 +526,13 @@ function NetflixPlayer({
                 <button className="nfp-ctrl-btn" onClick={togglePlay}>
                   {playing ? <Pause size={24} /> : <Play size={24} fill="white" />}
                 </button>
-                <button className="nfp-ctrl-btn" onClick={() => skip(-10)}>
-                  <SkipBack size={22} />
+                <button className="nfp-ctrl-btn nfp-skip-btn" onClick={() => skip(-10)} title="-10s">
+                  <RotateCcw size={22} />
+                  <span className="nfp-skip-text">10</span>
                 </button>
-                <button className="nfp-ctrl-btn" onClick={() => skip(10)}>
-                  <SkipForward size={22} />
+                <button className="nfp-ctrl-btn nfp-skip-btn" onClick={() => skip(10)} title="+10s">
+                  <RotateCw size={22} />
+                  <span className="nfp-skip-text">10</span>
                 </button>
 
                 <div className="nfp-volume-group">

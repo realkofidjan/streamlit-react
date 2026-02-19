@@ -237,6 +237,24 @@
 }
 
 /* ===== Volume ===== */
+.nfp-ctrl-btn.nfp-skip-btn {
+  position: relative;
+  width: 44px;
+  /* Slightly wider if needed */
+}
+
+.nfp-skip-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.6rem;
+  font-weight: bold;
+  pointer-events: none;
+  margin-top: 1px;
+  /* Optical adjustment */
+}
+
 .nfp-volume-group {
   display: flex;
   align-items: center;
