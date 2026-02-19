@@ -231,15 +231,12 @@ function Home() {
   // Pick random featured items for the billboard and cycle
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const featuredCandidates = useMemo(() => {
-    const candidates = [
-      ...localMovieTmdb.filter((m) => m.backdrop_path).map((m) => ({ ...m, _type: 'movie' })),
-      ...localTvTmdb.filter((s) => s.backdrop_path).map((s) => ({ ...s, _type: 'tv' })),
-      ...trending.filter((t) => t.backdrop_path && (t.media_type === 'movie' || t.media_type === 'tv'))
-        .map((t) => ({ ...t, _type: t.media_type })),
-    ];
-    // Shuffle a bit or just take top 10
-    return candidates.slice(0, 10);
-  }, [localMovieTmdb, localTvTmdb, trending]);
+    // ONLY use trending items as requested
+    return trending
+      .filter((t) => t.backdrop_path && (t.media_type === 'movie' || t.media_type === 'tv'))
+      .map((t) => ({ ...t, _type: t.media_type }))
+      .slice(0, 10);
+  }, [trending]);
 
   useEffect(() => {
     if (featuredCandidates.length <= 1) return;

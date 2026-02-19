@@ -40,7 +40,15 @@ function HeroBillboard({ item, type, onMoreInfo }) {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.8 }}
           className="billboard-motion-wrapper"
-          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'flex-end'
+          }}
         >
           {backdrop && (
             <img
