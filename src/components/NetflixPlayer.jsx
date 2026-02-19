@@ -463,6 +463,32 @@ function NetflixPlayer({
         )}
       </AnimatePresence>
 
+      {/* ===== CENTER PLAY/PAUSE ===== */}
+      <AnimatePresence>
+        {showControls && !showPausedOverlay && !buffering && (
+          <motion.div
+            className="nfp-center-controls"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePlay();
+              showControlsTemporarily();
+            }}
+          >
+            <div className="nfp-center-play-btn">
+              {playing ? (
+                <Pause size={48} fill="white" className="nfp-center-icon" />
+              ) : (
+                <Play size={48} fill="white" className="nfp-center-icon" style={{ marginLeft: '4px' }} />
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ===== TOP BAR — back arrow left, flag right ===== */}
       <AnimatePresence>
         {showControls && !showPausedOverlay && (

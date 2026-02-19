@@ -245,59 +245,65 @@ function ContentModal({ content, onClose, show }) {
     };
 
     const handleDownload = (e, targetItem, type) => {
-        e.stopPropagation();
+        try {
+            e.stopPropagation();
 
-        // Log click
-        console.log('[ContentModal] handleDownload clicked', { type, targetItem });
+            // Log click
+            alert('Debug: Download Clicked');
+            console.log('[ContentModal] handleDownload clicked', { type, targetItem });
 
-        // Get the correct filename from state
-        let filename;
-        if (type === 'movie') {
-            filename = localFilename;
-        } else {
-            filename = localEpisodeFilenames[targetItem.episode_number];
+            // Get the correct filename from state
+            let filename;
+            if (type === 'movie') {
+                filename = localFilename;
+            } else {
+                filename = localEpisodeFilenames[targetItem.episode_number];
+            }
+
+            console.log('[ContentModal] Resolved filename:', filename);
+
+            if (!filename) {
+                alert('Cannot download: Source file not found locally on server.');
+                console.error('Missing filename for download', type, targetItem);
+                return;
+            }
+
+            const key = type === 'movie' ? String(targetItem.id) : `${item.id}-s${selectedSeason}e${targetItem.episode_number}`;
+            console.log('[ContentModal] Generated key:', key);
+
+            const title = type === 'movie' ? targetItem.title : targetItem.name;
+            const poster = type === 'movie' ? targetItem.poster_path : targetItem.still_path || details.poster_path;
+
+            const baseUrl = getMediaUrl();
+            console.log('[ContentModal] Base URL:', baseUrl);
+
+            if (!baseUrl || baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')) {
+                alert('Cannot download from localhost. Please set your public Server URL in Settings.');
+                console.error('Invalid download URL base:', baseUrl);
+                return;
+            }
+
+            const streamUrl = type === 'movie'
+                ? `${baseUrl}/api/movies/${encodeURIComponent(filename)}`
+                : `${baseUrl}/api/tv/${encodeURIComponent(item.name || item.title)}/s${selectedSeason}/${encodeURIComponent(filename)}`;
+
+            // Verify URL
+            alert(`Requesting: ${streamUrl}`);
+            console.log('[ContentModal] Stream URL:', streamUrl);
+
+            startNativeDownload(key, streamUrl, {
+                id: targetItem.id,
+                title,
+                posterPath: poster,
+                type,
+                showId: item.id,
+                season: selectedSeason,
+                episode: targetItem.episode_number
+            });
+        } catch (err) {
+            alert('Critical Download Error: ' + err.message);
+            console.error('Critical handleDownload handler error:', err);
         }
-
-        console.log('[ContentModal] Resolved filename:', filename);
-
-        if (!filename) {
-            alert('Cannot download: Source file not found locally on server.');
-            console.error('Missing filename for download', type, targetItem);
-            return;
-        }
-
-        const key = type === 'movie' ? String(targetItem.id) : `${item.id}-s${selectedSeason}e${targetItem.episode_number}`;
-        console.log('[ContentModal] Generated key:', key);
-
-        const title = type === 'movie' ? targetItem.title : targetItem.name;
-        const poster = type === 'movie' ? targetItem.poster_path : targetItem.still_path || details.poster_path;
-
-        const baseUrl = getMediaUrl();
-        console.log('[ContentModal] Base URL:', baseUrl);
-
-        if (!baseUrl || baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')) {
-            alert('Cannot download from localhost. Please set your public Server URL in Settings.');
-            console.error('Invalid download URL base:', baseUrl);
-            return;
-        }
-
-        const streamUrl = type === 'movie'
-            ? `${baseUrl}/api/movies/${encodeURIComponent(filename)}`
-            : `${baseUrl}/api/tv/${encodeURIComponent(item.name || item.title)}/s${selectedSeason}/${encodeURIComponent(filename)}`;
-
-        // Verify URL
-        alert(`Requesting: ${streamUrl}`);
-        console.log('[ContentModal] Stream URL:', streamUrl);
-
-        startNativeDownload(key, streamUrl, {
-            id: targetItem.id,
-            title,
-            posterPath: poster,
-            type,
-            showId: item.id,
-            season: selectedSeason,
-            episode: targetItem.episode_number
-        });
     };
 
     // Request download for non-local content

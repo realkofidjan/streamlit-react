@@ -45,6 +45,47 @@
   }
 }
 
+/* ===== CENTER CONTROLS ===== */
+.nfp-center-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  /* Let clicks pass through outside the button if needed, but the button itself has pointer-events: auto */
+}
+
+.nfp-center-play-btn {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: none;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.1s;
+  padding: 20px;
+  /* larger hit area */
+}
+
+.nfp-center-play-btn:active {
+  transform: scale(0.95);
+  background: transparent;
+}
+
+.nfp-center-icon {
+  color: white;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.8));
+  /* Stronger shadow for visibility */
+  width: 64px;
+  height: 64px;
+}
+
 /* ===== TOP BAR ===== */
 .nfp-top-bar {
   position: absolute;
