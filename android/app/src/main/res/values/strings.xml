@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Streamlit React</string>
+    <string name="title_activity_main">Streamlit React</string>
+    <string name="package_name">com.streamlit.tv</string>
+    <string name="custom_url_scheme">com.streamlit.tv</string>
+</resources>

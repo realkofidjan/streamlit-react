@@ -1,0 +1,5 @@
+{
+  "appId": "com.streamlit.tv",
+  "appName": "Streamlit React",
+  "webDir": "dist"
+}
