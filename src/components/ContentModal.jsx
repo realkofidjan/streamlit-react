@@ -367,7 +367,7 @@ function ContentModal({ content, onClose, show }) {
                         title="Stream"
                         allow="autoplay; fullscreen; picture-in-picture; encrypted-media; presentation"
                         referrerPolicy="no-referrer"
-                        sandbox="allow-scripts allow-same-origin allow-popups allow-presentation allow-forms allow-popups-to-escape-sandbox allow-top-navigation"
+                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox allow-top-navigation"
                     />
                 </div>
             </div>
