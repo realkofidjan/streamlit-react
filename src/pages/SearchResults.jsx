@@ -124,7 +124,7 @@ function SearchResults() {
                 key={`${item.type}-${item.id}`}
                 item={item}
                 type={item.type}
-                badge={isLocal ? 'local' : 'cloud'}
+                badge={isLocal ? 'local' : null}
                 onClick={() => openModal(item)}
               />
             );

@@ -4,12 +4,14 @@ import { FaPlay, FaPlus, FaCheck, FaThumbsUp, FaTimes, FaDownload, FaChevronDown
 import { getMovieDetails, getTvShowDetails, getSimilarMovies, getSimilarTvShows, getImageUrl, getTvSeasonDetails } from '../services/tmdb';
 import { searchLocalMovies, searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes, getMediaUrl } from '../services/media';
 import { useUser } from '../contexts/UserContext';
+import { useAlert } from '../contexts/AlertContext';
 import axios from 'axios';
 import './ContentModal.css';
 
 function ContentModal({ content, onClose, show }) {
     const navigate = useNavigate();
     const { currentUser, addToWatchlist, removeFromWatchlist } = useUser();
+    const { showAlert } = useAlert();
     const overlayRef = useRef(null);
 
     const [details, setDetails] = useState(null);
@@ -216,7 +218,7 @@ function ContentModal({ content, onClose, show }) {
 
     const handleDownload = (e, targetItem) => {
         e.stopPropagation();
-        alert(`Download started for: ${targetItem.name || targetItem.title}`);
+        showAlert(`Download started for: ${targetItem.name || targetItem.title}`, 'success');
     };
 
     // Request download for non-local content
@@ -229,9 +231,9 @@ function ContentModal({ content, onClose, show }) {
                 title: item.title,
                 year,
             });
-            alert(res.data.message || 'Download request queued!');
+            showAlert(res.data.message || 'Download request queued!', 'success');
         } catch (err) {
-            alert('Failed to request download: ' + (err.response?.data?.error || err.message));
+            showAlert('Failed to request download: ' + (err.response?.data?.error || err.message), 'error');
         }
     };
 
@@ -246,9 +248,9 @@ function ContentModal({ content, onClose, show }) {
                 episode: episodeNum,
                 episodeTitle: epTitle || '',
             });
-            alert(res.data.message || 'Download request queued!');
+            showAlert(res.data.message || 'Download request queued!', 'success');
         } catch (err) {
-            alert('Failed to request download: ' + (err.response?.data?.error || err.message));
+            showAlert('Failed to request download: ' + (err.response?.data?.error || err.message), 'error');
         }
     };
 

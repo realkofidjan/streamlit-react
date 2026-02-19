@@ -11,6 +11,7 @@ import AllMovies from './pages/AllMovies';
 import AllTvShows from './pages/AllTvShows';
 import Player from './pages/Player';
 import Settings from './pages/Settings';
+import { AlertProvider } from './contexts/AlertContext';
 import './App.css';
 
 const pageVariants = {
@@ -87,9 +88,11 @@ function App() {
   return (
     <Router>
       <UserProvider>
-        <div className="app">
-          <AppRoutes />
-        </div>
+        <AlertProvider>
+          <div className="app">
+            <AppRoutes />
+          </div>
+        </AlertProvider>
       </UserProvider>
     </Router>
   );
