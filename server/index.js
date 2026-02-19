@@ -132,6 +132,9 @@ function writeUsers(users) {
 }
 
 function streamFile(filePath, req, res) {
+  // Global debug log to catch ALL requests/errors
+  console.log(`\n--- Incoming Request ---\nURL: ${req.url}\nRange: ${req.headers.range || 'None'}`);
+
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: 'File not found' });
   }
@@ -151,12 +154,17 @@ function streamFile(filePath, req, res) {
 
     // If client requested a specific end, RESPECT IT unless it's way too big
     let end = requestedEnd;
-    if (!parts[1] || isNaN(requestedEnd)) {
+
+    // Check if end is valid and explicitly requested
+    const hasExplicitEnd = !!parts[1] && !isNaN(requestedEnd);
+
+    if (!hasExplicitEnd) {
       // No end specified, use our chunk size
       end = Math.min(start + maxChunk - 1, fileSize - 1);
     } else {
       // End specified.
       // Only cap it if the requested range is LARGER than our buffer.
+      // This ensures small range requests (like 0-1) are respected.
       if (end - start > BUFFER_CHUNK) {
         end = Math.min(start + maxChunk - 1, fileSize - 1);
       }
@@ -191,16 +199,29 @@ function streamFile(filePath, req, res) {
       console.error('Stream error:', err);
     });
   } else {
+    // No Range header? This is the problem!
+    // Browsers sometimes probe with a no-range request.
+    // STRATEGY CHECK: Sending 206 for non-range requests causes "Plug-in handled load" error in Safari/QuickTime.
+    // NEW STRATEGY: Send 200 OK with the FULL Content-Length, but only send the first 1MB.
+    // This looks like a "Network Error" (incomplete download) to the browser.
+    // Smart browsers (Chrome/Safari) will see "Accept-Ranges: bytes" and immediately retry with a "Range: bytes=..." header to resume.
+
+    console.log(`Stream (No-Range): ${req.url} | Sending Fake 200 OK (Full Length) to force Range Request`);
+
+    const start = 0;
+    // content-length header will lie and say it's the whole file
+    // but we only stream the first chunk
     const end = Math.min(INITIAL_CHUNK - 1, fileSize - 1);
-    const chunkSize = end + 1;
-    const stream = fs.createReadStream(filePath, { start: 0, end, highWaterMark: STREAM_HWM });
-    res.writeHead(206, {
-      'Content-Range': `bytes 0-${end}/${fileSize}`,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': chunkSize,
+
+    res.writeHead(200, {
+      'Content-Length': fileSize, // Lie: Say we are sending everything
       'Content-Type': contentType,
+      'Accept-Ranges': 'bytes',   // Truth: Tell them we support ranges so they retry!
       'Cache-Control': 'no-cache, no-store, must-revalidate',
     });
+
+    // Only read the first chunk
+    const stream = fs.createReadStream(filePath, { start, end, highWaterMark: STREAM_HWM });
     stream.pipe(res);
   }
 }
@@ -731,8 +752,8 @@ app.get('/api/subtitles/download', async (req, res) => {
 
 // ========== START ==========
 
-app.listen(PORT, () => {
-  console.log(`Media server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Media server running on http://0.0.0.0:${PORT}`);
   console.log(`Movies dirs: ${MOVIES_DIRS.join(', ')}`);
   console.log(`TV dirs: ${TV_DIRS.join(', ')}`);
 });

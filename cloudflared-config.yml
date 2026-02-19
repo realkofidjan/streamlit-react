@@ -1,0 +1,13 @@
+tunnel: 30eb5eea-b14f-4c52-aea9-3a95344ca28f
+credentials-file: /Users/realkofi.d/.cloudflared/30eb5eea-b14f-4c52-aea9-3a95344ca28f.json
+
+originRequest:
+  connectTimeout: 30s
+  keepAliveConnections: 100
+  keepAliveIdle: 30s
+  noTLSVerify: true
+
+ingress:
+  - hostname: streamlit.stream
+    service: http://127.0.0.1:4000
+  - service: http_status:404
