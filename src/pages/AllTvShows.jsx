@@ -37,8 +37,9 @@ function AllTvShows() {
         const localShows = libRes.data.tvShows || [];
         const results = [];
 
-        for (let i = 0; i < localShows.length; i += 5) {
-          const batch = localShows.slice(i, i + 5);
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < localShows.length; i += BATCH_SIZE) {
+          const batch = localShows.slice(i, i + BATCH_SIZE);
           const promises = batch.map(async (s) => {
             try {
               const year = extractYear(s.name);
@@ -97,6 +98,8 @@ function AllTvShows() {
           });
           const batchResults = await Promise.all(promises);
           results.push(...batchResults.filter(Boolean));
+          // Rate limit: wait 300ms between batches
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
 
         const seen = new Set();

@@ -38,8 +38,9 @@ function AllMovies() {
         const localMovies = libRes.data.movies || [];
         const results = [];
 
-        for (let i = 0; i < localMovies.length; i += 5) {
-          const batch = localMovies.slice(i, i + 5);
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < localMovies.length; i += BATCH_SIZE) {
+          const batch = localMovies.slice(i, i + BATCH_SIZE);
           const promises = batch.map(async (m) => {
             try {
               const year = extractYear(m.name);
@@ -51,6 +52,8 @@ function AllMovies() {
           });
           const batchResults = await Promise.all(promises);
           results.push(...batchResults.filter(Boolean));
+          // Rate limit: wait 300ms between batches
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
 
         const seen = new Set();
