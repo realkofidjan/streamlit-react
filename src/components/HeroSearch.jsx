@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FaPlay, FaInfoCircle } from 'react-icons/fa';
 import { getImageUrl } from '../services/tmdb';
 import './HeroSearch.css';
@@ -31,35 +32,47 @@ function HeroBillboard({ item, type, onMoreInfo }) {
 
   return (
     <section className="billboard">
-      {backdrop && (
-        <img
-          className="billboard-bg"
-          src={backdrop}
-          alt=""
-          draggable={false}
-        />
-      )}
-      <div className="billboard-gradient-bottom" />
-      <div className="billboard-gradient-left" />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={item.id}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.8 }}
+          className="billboard-motion-wrapper"
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+        >
+          {backdrop && (
+            <img
+              className="billboard-bg"
+              src={backdrop}
+              alt=""
+              draggable={false}
+            />
+          )}
+          <div className="billboard-gradient-bottom" />
+          <div className="billboard-gradient-left" />
 
-      <div className="billboard-content">
-        <h1 className="billboard-title">{title}</h1>
-        {overview && <p className="billboard-overview">{overview}</p>}
-        <div className="billboard-actions">
-          <button
-            className="billboard-btn billboard-btn-play"
-            onClick={handlePlay}
-          >
-            <FaPlay /> Play
-          </button>
-          <button
-            className="billboard-btn billboard-btn-info"
-            onClick={handleMoreInfo}
-          >
-            <FaInfoCircle /> More Info
-          </button>
-        </div>
-      </div>
+          <div className="billboard-content">
+            <h1 className="billboard-title">{title}</h1>
+            {overview && <p className="billboard-overview">{overview}</p>}
+            <div className="billboard-actions">
+              <button
+                className="billboard-btn billboard-btn-play"
+                onClick={handlePlay}
+              >
+                <FaPlay /> Play
+              </button>
+              <button
+                className="billboard-btn billboard-btn-info"
+                onClick={handleMoreInfo}
+              >
+                <FaInfoCircle /> More Info
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
     </section>
   );
 }

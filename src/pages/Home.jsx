@@ -6,7 +6,7 @@ import BackdropCard from '../components/BackdropCard';
 import ContentModal from '../components/ContentModal';
 import { useUser } from '../contexts/UserContext';
 import { getLibrary } from '../services/media';
-import { searchMovies, searchTvShows, getTvShowDetails, getRecommendedMovies, getRecommendedTvShows, getTrendingAll, getImageUrl } from '../services/tmdb';
+import { searchMovies, searchTvShows, getTvShowDetails, getRecommendedMovies, getRecommendedTvShows, getTrendingDay, getImageUrl } from '../services/tmdb';
 import { cleanName, extractYear, pickBestResult } from '../utils/matchTmdb';
 import { getOfflineVideos, removeOfflineVideo, formatFileSize } from '../services/offlineStorage';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
@@ -93,7 +93,7 @@ function Home() {
           getLibrary().catch(() => ({ data: { movies: [], tvShows: [] } })),
           getRecommendedMovies().catch(() => ({ data: { results: [] } })),
           getRecommendedTvShows().catch(() => ({ data: { results: [] } })),
-          getTrendingAll().catch(() => ({ data: { results: [] } })),
+          getTrendingDay().catch(() => ({ data: { results: [] } })),
         ]);
         setLibrary(libRes.data);
         setRecommendedMovies(recMovies.data.results || []);
