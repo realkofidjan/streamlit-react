@@ -337,8 +337,8 @@ function ContentModal({ content, onClose, show }) {
             onClose();
             navigate(`/play?type=movie&id=${item.id}${startTime > 0 ? `&t=${startTime}` : ''}`);
         } else {
-            // Updated to vidsrc.to - often more reliable than vidfast
-            setStreamUrl(`https://vidsrc.to/embed/movie/${item.id}`);
+            // Updated to vidlink.pro - verified 200 OK response
+            setStreamUrl(`https://vidlink.pro/movie/${item.id}`);
         }
     };
 
@@ -349,8 +349,8 @@ function ContentModal({ content, onClose, show }) {
             onClose();
             navigate(`/play?type=episode&id=${item.id}&season=${seasonNum}&episode=${episodeNum}${startTime > 0 ? `&t=${startTime}` : ''}`);
         } else {
-            // Updated to vidsrc.to
-            setStreamUrl(`https://vidsrc.to/embed/tv/${item.id}/${seasonNum}/${episodeNum}`);
+            // Updated to vidlink.pro
+            setStreamUrl(`https://vidlink.pro/tv/${item.id}/${seasonNum}/${episodeNum}`);
         }
     };
 
@@ -369,7 +369,6 @@ function ContentModal({ content, onClose, show }) {
                         title="Stream"
                         allow="autoplay; fullscreen; picture-in-picture; encrypted-media; presentation"
                         referrerPolicy="no-referrer"
-                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
                     />
                 </div>
             </div>
