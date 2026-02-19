@@ -216,27 +216,38 @@ function ContentModal({ content, onClose, show }) {
 
     // Native Download Logic for APK
     const startNativeDownload = async (key, streamUrl, metadata) => {
-        if (isDownloading[key]) return;
+        console.log('[ContentModal] startNativeDownload called', { key, streamUrl });
 
-        setIsDownloading(prev => ({ ...prev, [key]: true }));
+        if (isDownloading[key]) {
+            console.log('[ContentModal] Already downloading', key);
+            return;
+        }
+
+        setIsDownloading(prev => {
+            console.log('[ContentModal] Setting isDownloading true for', key);
+            return { ...prev, [key]: true };
+        });
+
         try {
+            console.log('[ContentModal] Calling saveVideoOffline...');
             await saveVideoOffline(key, streamUrl, metadata, (progress) => {
+                console.log(`[ContentModal] Progress for ${key}:`, progress);
                 setDownloadProgress(prev => ({ ...prev, [key]: progress }));
             });
-            // Cleanup state after initiation (Downloader runs in background)
-            // Note: True completion tracking would require a more complex listener
-            // setup, but for now we just show initiation.
+            console.log('[ContentModal] Download completed successfully', key);
         } catch (err) {
-            console.error('Download failed', err);
+            console.error('[ContentModal] Download failed exception', err);
             alert('Download failed: ' + err.message);
         } finally {
+            console.log('[ContentModal] Finally block - resetting isDownloading to false', key);
             setIsDownloading(prev => ({ ...prev, [key]: false }));
         }
     };
 
-
     const handleDownload = (e, targetItem, type) => {
         e.stopPropagation();
+        alert('Download Clicked!'); // Immediate feedback proof
+        console.log('[ContentModal] handleDownload clicked', { type, targetItem });
 
         // Get the correct filename from state
         let filename;
@@ -246,6 +257,8 @@ function ContentModal({ content, onClose, show }) {
             filename = localEpisodeFilenames[targetItem.episode_number];
         }
 
+        console.log('[ContentModal] Resolved filename:', filename);
+
         if (!filename) {
             alert('Cannot download: Source file not found locally on server.');
             console.error('Missing filename for download', type, targetItem);
@@ -253,10 +266,14 @@ function ContentModal({ content, onClose, show }) {
         }
 
         const key = type === 'movie' ? String(targetItem.id) : `${item.id}-s${selectedSeason}e${targetItem.episode_number}`;
+        console.log('[ContentModal] Generated key:', key);
+
         const title = type === 'movie' ? targetItem.title : targetItem.name;
         const poster = type === 'movie' ? targetItem.poster_path : targetItem.still_path || details.poster_path;
 
         const baseUrl = getMediaUrl();
+        console.log('[ContentModal] Base URL:', baseUrl);
+
         if (!baseUrl || baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')) {
             alert('Cannot download from localhost. Please set your public Server URL in Settings.');
             console.error('Invalid download URL base:', baseUrl);
@@ -267,7 +284,7 @@ function ContentModal({ content, onClose, show }) {
             ? `${baseUrl}/api/movies/${encodeURIComponent(filename)}`
             : `${baseUrl}/api/tv/${encodeURIComponent(item.name || item.title)}/s${selectedSeason}/${encodeURIComponent(filename)}`;
 
-        console.log('Starting native download:', streamUrl);
+        console.log('[ContentModal] Stream URL:', streamUrl);
 
         startNativeDownload(key, streamUrl, {
             id: targetItem.id,
@@ -572,7 +589,7 @@ function ContentModal({ content, onClose, show }) {
                                     <button
                                         className={`modal-icon-btn ${isDownloading[String(item.id)] ? 'downloading' : ''}`}
                                         title={isDownloading[String(item.id)] ? "Downloading..." : "Save Offline"}
-                                        onClick={(e) => isDownloading[String(item.id)] ? null : handleDownload(e, details, 'movie')}
+                                        onClick={(e) => handleDownload(e, details, 'movie')}
                                         disabled={isDownloading[String(item.id)]}
                                         style={{ position: 'relative' }}
                                     >
@@ -711,7 +728,7 @@ function ContentModal({ content, onClose, show }) {
                                                                     {isNative && (
                                                                         <button
                                                                             className={`ep-download-btn ${isDownloading[epKey] ? 'downloading' : ''}`}
-                                                                            onClick={(e) => isDownloading[epKey] ? null : handleDownload(e, ep, 'episode')}
+                                                                            onClick={(e) => handleDownload(e, ep, 'episode')}
                                                                             title="Download Episode"
                                                                             disabled={isDownloading[epKey]}
                                                                             style={{ position: 'relative', width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
