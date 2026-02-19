@@ -5,6 +5,7 @@ import {
     searchLocalMovies, getLocalMovieStreamUrl,
     searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes, getLocalTvStreamUrl,
 } from '../services/media';
+import { searchSubtitles, fetchSubtitleUrl } from '../services/subtitles';
 import { useUser } from '../contexts/UserContext';
 import NetflixPlayer from '../components/NetflixPlayer';
 import './Player.css';
@@ -79,7 +80,14 @@ function Player() {
         load();
     }, [tmdbId, type, season, episode]);
 
+    // Subtitles
+    const [subtitles, setSubtitles] = useState([]);
+    const [currentSubtitle, setCurrentSubtitle] = useState(null);
+
+    // ... (existing load logic)
+
     const loadMovie = async () => {
+        // ... (existing movie loading)
         const res = await getMovieDetails(tmdbId);
         const movie = res.data;
         setTitle(movie.title);
@@ -92,16 +100,21 @@ function Player() {
 
         // Find local file
         const localRes = await searchLocalMovies(movie.title);
+        let foundFilename = null;
         if (localRes.data.length > 0) {
             const file = localRes.data[0];
+            foundFilename = file.filename;
             setLocalFilename(file.filename);
             setStreamUrl(getLocalMovieStreamUrl(file.filename));
         } else {
             setError('Movie not found on local server');
         }
+
+
     };
 
     const loadEpisode = async () => {
+        // ... (existing episode loading)
         const showRes = await getTvShowDetails(tmdbId);
         const show = showRes.data;
         setShowName(show.name);
@@ -110,6 +123,9 @@ function Player() {
         const seasonNum = parseInt(season);
         const episodeNum = parseInt(episode);
 
+
+
+        // ... (rest of loadEpisode)
         // Fetch season episodes from TMDB
         const seasonRes = await getTvSeasonDetails(tmdbId, seasonNum);
         const episodes = seasonRes.data.episodes || [];
@@ -164,6 +180,8 @@ function Player() {
         setLocalShowName(matchedShowName);
         setLocalSeasonFolder(matchedSeasonFolder);
         setLocalEpisodeSet(localEps);
+
+
 
         // Build episodes data for the player's episode panel
         const seasonsData = [];
@@ -305,6 +323,22 @@ function Player() {
                 onNextEpisode={type === 'episode' ? playNextEpisode : null}
                 nextEpisodeInfo={type === 'episode' ? nextEpisodeInfo : null}
                 mediaInfo={mediaInfo}
+                subtitles={subtitles}
+                currentSubtitle={currentSubtitle}
+                onSelectSubtitle={(sub) => {
+                    if (!sub) {
+                        setCurrentSubtitle(null);
+                        return;
+                    }
+                    if (sub.url) {
+                        setCurrentSubtitle(sub);
+                    } else {
+                        // Fetch URL on demand if not already fetched
+                        fetchSubtitleUrl(sub.id).then(url => {
+                            if (url) setCurrentSubtitle({ ...sub, url });
+                        });
+                    }
+                }}
             />
         </div>
     );

@@ -682,15 +682,26 @@ const OPENSUBTITLES_BASE = 'https://api.opensubtitles.com/api/v1';
 
 app.get('/api/subtitles/search', async (req, res) => {
   if (!OPENSUBTITLES_API_KEY) return res.status(503).json({ error: 'OPENSUBTITLES_API_KEY not configured' });
-  const { tmdb_id, type, season, episode, languages } = req.query;
-  if (!tmdb_id) return res.status(400).json({ error: 'tmdb_id required' });
+  const { tmdb_id, type, season, episode, languages, filename, query } = req.query;
+  // Require either tmdb_id OR query
+  if (!tmdb_id && !query) return res.status(400).json({ error: 'tmdb_id or query required' });
 
   try {
-    const params = new URLSearchParams({ tmdb_id, languages: languages || 'en' });
+    console.log(`[API] Subtitle Search: TMDB=${tmdb_id}, Query=${query}, Type=${type}, S=${season} E=${episode}, Lang=${languages}, File=${filename}`);
+
+    // Construct params
+    // If we have a specific query (like Show Name), prioritize it over ID if the ID is suspected to be wrong?
+    // For now, let's just use what is sent.
+
+    const params = new URLSearchParams({ languages: languages || 'en' });
+    if (tmdb_id) params.set('tmdb_id', tmdb_id);
+    if (query) params.set('query', query);
+
     if (type === 'episode' && season && episode) {
       params.set('season_number', season);
       params.set('episode_number', episode);
     }
+
     const response = await fetch(`${OPENSUBTITLES_BASE}/subtitles?${params}`, {
       headers: {
         'Api-Key': OPENSUBTITLES_API_KEY,
@@ -699,6 +710,41 @@ app.get('/api/subtitles/search', async (req, res) => {
       },
     });
     const data = await response.json();
+
+    if (data.data && Array.isArray(data.data)) {
+      let results = data.data;
+
+      // Separate by language
+      const en = results.filter(s => s.attributes.language === 'en');
+      const others = results.filter(s => s.attributes.language !== 'en');
+
+      if (filename && en.length > 0) {
+        // Simple scoring: count how many "parts" of the filename appear in the release name
+        // Cleaning: remove extension, split by dots/spaces/hyphens
+        const cleanName = filename.toLowerCase().replace(/\.[^/.]+$/, "").replace(/[^a-z0-9]/g, " ");
+        const tokens = cleanName.split(/\s+/).filter(t => t.length > 2); // only significant tokens
+
+        en.forEach(sub => {
+          let score = 0;
+          const release = (sub.attributes.release || "").toLowerCase();
+          const subFile = (sub.attributes.files?.[0]?.file_name || "").toLowerCase();
+          const target = release + " " + subFile;
+
+          tokens.forEach(t => {
+            if (target.includes(t)) score++;
+          });
+          sub._score = score;
+        });
+
+        // Sort by score descending
+        en.sort((a, b) => b._score - a._score);
+      }
+
+      // Limit English results to top 5 best matches
+      data.data = [...en.slice(0, 5), ...others];
+      console.log(`[API] Sorted Subtitles. Top match: ${data.data[0]?.attributes?.release} (Score: ${data.data[0]?._score})`);
+    }
+
     res.json(data);
   } catch (err) {
     console.error('Subtitle search error:', err.message);

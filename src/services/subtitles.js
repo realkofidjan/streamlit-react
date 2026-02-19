@@ -11,13 +11,17 @@ import { getMediaUrl } from './media';
  * @param {string} [languages='en'] - Language code(s)
  * @returns {Promise<Array>} Array of subtitle results
  */
-export async function searchSubtitles(tmdbId, type = 'movie', season, episode, languages = 'en') {
+export async function searchSubtitles(tmdbId, type = 'movie', season, episode, languages = 'en', filename, query) {
     try {
-        const params = { tmdb_id: tmdbId, type, languages };
+        const params = { type, languages };
+        if (tmdbId) params.tmdb_id = tmdbId;
+        if (query) params.query = query;
+
         if (type === 'episode' && season && episode) {
             params.season = season;
             params.episode = episode;
         }
+        if (filename) params.filename = filename;
         const res = await axios.get(`${getMediaUrl()}/api/subtitles/search`, { params });
         return res.data?.data || [];
     } catch {

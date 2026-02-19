@@ -637,3 +637,35 @@
     max-width: 100vw;
   }
 }
+
+/* ===== Subtitle Rows (Reuse panel/header/list from episodes) ===== */
+.nfp-subtitle-row {
+  display: flex;
+  align-items: center;
+  padding: 1.25rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 1rem;
+  color: #ccc;
+  font-weight: 500;
+}
+
+.nfp-subtitle-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.nfp-subtitle-row.active {
+  background: #181818;
+  color: #e50914;
+  font-weight: 700;
+  border-left: 4px solid #e50914;
+}
+
+.nfp-subtitle-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #777;
+  font-style: italic;
+}

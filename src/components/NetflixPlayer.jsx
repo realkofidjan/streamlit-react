@@ -128,6 +128,8 @@ function NetflixPlayer({
             setShowControls(true);
           } else if (showEpisodes) {
             setShowEpisodes(false);
+          } else if (showSubtitleMenu) {
+            setShowSubtitleMenu(false);
           } else if (fullscreen) {
             document.exitFullscreen();
           } else if (showNextOverlay) {
@@ -327,7 +329,7 @@ function NetflixPlayer({
         showControlsTemporarily();
       }}
       onClick={(e) => {
-        if (showEpisodes || showNextOverlay) return;
+        if (showEpisodes || showNextOverlay || showSubtitleMenu) return;
         if (showPausedOverlay) {
           setShowPausedOverlay(false);
           setShowControls(true);
@@ -368,16 +370,27 @@ function NetflixPlayer({
             onClose();
           }
         }}
-      />
+      >
+        {currentSubtitle && (
+          <track
+            kind="subtitles"
+            src={currentSubtitle.url}
+            label={currentSubtitle.attributes?.language || 'English'}
+            default
+          />
+        )}
+      </video>
 
       <div className="nfp-video-area" />
 
       {/* Buffering spinner */}
-      {buffering && (
-        <div className="nfp-buffering">
-          <div className="nfp-buffering-spinner" />
-        </div>
-      )}
+      {
+        buffering && (
+          <div className="nfp-buffering">
+            <div className="nfp-buffering-spinner" />
+          </div>
+        )
+      }
 
       {/* ===== PAUSED INFO OVERLAY ===== */}
       <AnimatePresence>
@@ -557,6 +570,8 @@ function NetflixPlayer({
                   <MonitorSpeaker size={22} />
                 </button>
 
+
+
                 {/* Episode list */}
                 {episodes && (
                   <button
@@ -577,6 +592,8 @@ function NetflixPlayer({
           </motion.div>
         )}
       </AnimatePresence>
+
+
 
       {/* Episode list sidebar */}
       <AnimatePresence>
@@ -656,7 +673,7 @@ function NetflixPlayer({
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </div >
   );
 }
 
