@@ -246,7 +246,8 @@ function ContentModal({ content, onClose, show }) {
 
     const handleDownload = (e, targetItem, type) => {
         e.stopPropagation();
-        alert('Download Clicked!'); // Immediate feedback proof
+
+        // Log click
         console.log('[ContentModal] handleDownload clicked', { type, targetItem });
 
         // Get the correct filename from state
@@ -284,6 +285,8 @@ function ContentModal({ content, onClose, show }) {
             ? `${baseUrl}/api/movies/${encodeURIComponent(filename)}`
             : `${baseUrl}/api/tv/${encodeURIComponent(item.name || item.title)}/s${selectedSeason}/${encodeURIComponent(filename)}`;
 
+        // Verify URL
+        alert(`Requesting: ${streamUrl}`);
         console.log('[ContentModal] Stream URL:', streamUrl);
 
         startNativeDownload(key, streamUrl, {
