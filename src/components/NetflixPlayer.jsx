@@ -128,8 +128,6 @@ function NetflixPlayer({
             setShowControls(true);
           } else if (showEpisodes) {
             setShowEpisodes(false);
-          } else if (showSubtitleMenu) {
-            setShowSubtitleMenu(false);
           } else if (fullscreen) {
             document.exitFullscreen();
           } else if (showNextOverlay) {
@@ -371,14 +369,7 @@ function NetflixPlayer({
           }
         }}
       >
-        {currentSubtitle && (
-          <track
-            kind="subtitles"
-            src={currentSubtitle.url}
-            label={currentSubtitle.attributes?.language || 'English'}
-            default
-          />
-        )}
+
       </video>
 
       <div className="nfp-video-area" />

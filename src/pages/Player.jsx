@@ -323,22 +323,6 @@ function Player() {
                 onNextEpisode={type === 'episode' ? playNextEpisode : null}
                 nextEpisodeInfo={type === 'episode' ? nextEpisodeInfo : null}
                 mediaInfo={mediaInfo}
-                subtitles={subtitles}
-                currentSubtitle={currentSubtitle}
-                onSelectSubtitle={(sub) => {
-                    if (!sub) {
-                        setCurrentSubtitle(null);
-                        return;
-                    }
-                    if (sub.url) {
-                        setCurrentSubtitle(sub);
-                    } else {
-                        // Fetch URL on demand if not already fetched
-                        fetchSubtitleUrl(sub.id).then(url => {
-                            if (url) setCurrentSubtitle({ ...sub, url });
-                        });
-                    }
-                }}
             />
         </div>
     );
