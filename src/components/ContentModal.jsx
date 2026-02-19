@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaPlay, FaPlus, FaCheck, FaThumbsUp, FaTimes, FaDownload, FaChevronDown } from 'react-icons/fa';
@@ -9,6 +10,13 @@ import axios from 'axios';
 import './ContentModal.css';
 
 function ContentModal({ content, onClose, show }) {
+    // If not showing, render nothing. This prevents hooks from running conditionally.
+    if (!show || !content) return null;
+
+    return <ContentModalInner content={content} onClose={onClose} show={show} />;
+}
+
+function ContentModalInner({ content, onClose, show }) {
     const navigate = useNavigate();
     const { currentUser, addToWatchlist, removeFromWatchlist } = useUser();
     const { showAlert } = useAlert();
@@ -29,10 +37,16 @@ function ContentModal({ content, onClose, show }) {
     const [contentStack, setContentStack] = useState([]);
 
     // Current content being displayed (could be from stack)
-    const [currentContent, setCurrentContent] = useState(null);
+    const [currentContent, setCurrentContent] = useState(content);
 
     // Streaming overlay for non-local content
     const [streamUrl, setStreamUrl] = useState(null);
+    const [showAdWarning, setShowAdWarning] = useState(true);
+
+    // Reset warning when stream opens
+    useEffect(() => {
+        if (streamUrl) setShowAdWarning(true);
+    }, [streamUrl]);
 
     // Reset when root content changes
     useEffect(() => {
@@ -56,7 +70,7 @@ function ContentModal({ content, onClose, show }) {
 
     // Fetch data when currentContent changes
     useEffect(() => {
-        if (!currentContent || !show) return;
+        if (!currentContent) return;
         let cancelled = false;
 
         setDetails(null);
@@ -118,7 +132,7 @@ function ContentModal({ content, onClose, show }) {
         fetchInfo();
 
         return () => { cancelled = true; };
-    }, [currentContent, show]);
+    }, [currentContent]);
 
     const checkLocalEpisodes = async (showData, seasonNum, cancelled) => {
         try {
@@ -200,7 +214,8 @@ function ContentModal({ content, onClose, show }) {
         }
     };
 
-    if (!show || !currentContent) return null;
+    // Safe to return null here if something is missing, as hooks are above.
+    if (!currentContent) return null;
 
     const item = details || currentContent;
     const isMovie = currentContent.type === 'movie';
@@ -311,11 +326,6 @@ function ContentModal({ content, onClose, show }) {
                     };
                 }
                 // If finished, suggest the next episode (this is a simple incremental logic)
-                // In a perfect world we'd check if the next episode exists in seasonDetails, 
-                // but we might not have all season details loaded. We'll assume it exists or rely on user to pick.
-                // For better UX, let's just stick to the specific episode if we can't confirm next exists easily without fetching.
-                // Actually, if we are in the modal, we have `seasonDetails` for the *selected* season.
-                // Let's just default to "Play S(last)E(last+1)" 
                 else {
                     return {
                         type: 'episode',
@@ -357,12 +367,6 @@ function ContentModal({ content, onClose, show }) {
     };
 
     // Close stream overlay
-    const [showAdWarning, setShowAdWarning] = useState(true);
-
-    // Reset warning when stream opens
-    useEffect(() => {
-        if (streamUrl) setShowAdWarning(true);
-    }, [streamUrl]);
 
     if (streamUrl) {
         return (
