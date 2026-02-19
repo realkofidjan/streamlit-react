@@ -264,7 +264,7 @@ function Home() {
         {filteredRecMovies.length > 0 && (
           <NetflixRow title="Popular Movies">
             {filteredRecMovies.slice(0, 20).map((m) => (
-              <MediaCard key={m.id} item={m} type="movie" badge="cloud" onClick={(i) => openModal(i, 'movie')} />
+              <MediaCard key={m.id} item={m} type="movie" onClick={(i) => openModal(i, 'movie')} />
             ))}
           </NetflixRow>
         )}
@@ -272,7 +272,7 @@ function Home() {
         {filteredRecTv.length > 0 && (
           <NetflixRow title="Popular TV Shows">
             {filteredRecTv.slice(0, 20).map((s) => (
-              <MediaCard key={s.id} item={s} type="tv" badge="cloud" onClick={(i) => openModal(i, 'tv')} />
+              <MediaCard key={s.id} item={s} type="tv" onClick={(i) => openModal(i, 'tv')} />
             ))}
           </NetflixRow>
         )}
@@ -356,7 +356,6 @@ function Home() {
                 key={t.id}
                 item={t}
                 type={t.media_type === 'tv' ? 'tv' : 'movie'}
-                badge="cloud"
                 onClick={(i) => openModal(i, t.media_type)}
               />
             ))}

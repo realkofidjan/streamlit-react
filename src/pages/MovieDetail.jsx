@@ -163,7 +163,7 @@ function MovieDetail() {
           <h2>More Like This</h2>
           <div className="nf-grid-library">
             {recommendations.slice(0, 12).map(m => (
-              <MediaCard key={m.id} item={m} type="movie" badge="cloud" />
+              <MediaCard key={m.id} item={m} type="movie" />
             ))}
           </div>
         </div>

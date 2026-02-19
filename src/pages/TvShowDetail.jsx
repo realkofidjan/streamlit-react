@@ -250,7 +250,7 @@ function TvShowDetail() {
             <h2 className="episodes-title" style={{ marginBottom: '1rem' }}>More Like This</h2>
             <div className="nf-grid-library">
               {recommendations.slice(0, 12).map(s => (
-                <MediaCard key={s.id} item={s} type="tv" badge="cloud" />
+                <MediaCard key={s.id} item={s} type="tv" />
               ))}
             </div>
           </div>
