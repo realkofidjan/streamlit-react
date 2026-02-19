@@ -571,10 +571,42 @@ function ContentModal({ content, onClose, show }) {
                                 {isNative && isLocalMovie && (
                                     <button
                                         className={`modal-icon-btn ${isDownloading[String(item.id)] ? 'downloading' : ''}`}
-                                        title="Save Offline"
-                                        onClick={(e) => handleDownload(e, details, 'movie')}
+                                        title={isDownloading[String(item.id)] ? "Downloading..." : "Save Offline"}
+                                        onClick={(e) => isDownloading[String(item.id)] ? null : handleDownload(e, details, 'movie')}
+                                        disabled={isDownloading[String(item.id)]}
+                                        style={{ position: 'relative' }}
                                     >
-                                        <FaDownload />
+                                        {isDownloading[String(item.id)] ? (
+                                            <div style={{ position: 'relative', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <svg width="24" height="24" viewBox="0 0 24 24" style={{ transform: 'rotate(-90deg)' }}>
+                                                    <circle
+                                                        cx="12"
+                                                        cy="12"
+                                                        r="10"
+                                                        fill="none"
+                                                        stroke="#333"
+                                                        strokeWidth="2"
+                                                    />
+                                                    <circle
+                                                        cx="12"
+                                                        cy="12"
+                                                        r="10"
+                                                        fill="none"
+                                                        stroke="#fff"
+                                                        strokeWidth="2"
+                                                        strokeDasharray="63" // 2 * pi * 10 ≈ 63
+                                                        strokeDashoffset={63 - ((downloadProgress[String(item.id)] || 0) / 100) * 63}
+                                                        strokeLinecap="round"
+                                                        style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+                                                    />
+                                                </svg>
+                                                <div style={{ position: 'absolute', fontSize: '8px', color: '#fff', fontWeight: 'bold' }}>
+                                                    {Math.round(downloadProgress[String(item.id)] || 0)}%
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <FaDownload />
+                                        )}
                                     </button>
                                 )}
                             </div>
@@ -679,10 +711,40 @@ function ContentModal({ content, onClose, show }) {
                                                                     {isNative && (
                                                                         <button
                                                                             className={`ep-download-btn ${isDownloading[epKey] ? 'downloading' : ''}`}
-                                                                            onClick={(e) => handleDownload(e, ep, 'episode')}
+                                                                            onClick={(e) => isDownloading[epKey] ? null : handleDownload(e, ep, 'episode')}
                                                                             title="Download Episode"
+                                                                            disabled={isDownloading[epKey]}
+                                                                            style={{ position: 'relative', width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                                                         >
-                                                                            <FaDownload />
+                                                                            {isDownloading[epKey] ? (
+                                                                                <div style={{ position: 'relative', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                                    <svg width="24" height="24" viewBox="0 0 24 24" style={{ transform: 'rotate(-90deg)' }}>
+                                                                                        <circle
+                                                                                            cx="12"
+                                                                                            cy="12"
+                                                                                            r="10"
+                                                                                            fill="none"
+                                                                                            stroke="#333"
+                                                                                            strokeWidth="2"
+                                                                                        />
+                                                                                        <circle
+                                                                                            cx="12"
+                                                                                            cy="12"
+                                                                                            r="10"
+                                                                                            fill="none"
+                                                                                            stroke="#fff"
+                                                                                            strokeWidth="2"
+                                                                                            strokeDasharray="63"
+                                                                                            strokeDashoffset={63 - ((downloadProgress[epKey] || 0) / 100) * 63}
+                                                                                            strokeLinecap="round"
+                                                                                            style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+                                                                                        />
+                                                                                    </svg>
+                                                                                    {/* Optional: Tiny text for percentage, might be too small for list items */}
+                                                                                </div>
+                                                                            ) : (
+                                                                                <FaDownload />
+                                                                            )}
                                                                         </button>
                                                                     )}
                                                                     <button

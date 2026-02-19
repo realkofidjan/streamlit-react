@@ -37,7 +37,18 @@ export async function saveVideoOffline(key, streamUrl, metadata, onProgress) {
 
   if (isNative) {
     try {
-      // 1. Start Background Download
+      // 1. Setup Progress Listener
+      let progressListener;
+      try {
+        progressListener = await CapacitorDownloader.addListener('notifyProgress', (event) => {
+          // event.progress is typically 0-100
+          if (onProgress) onProgress(event.progress);
+        });
+      } catch (e) {
+        console.warn('Could not add progress listener', e);
+      }
+
+      // 2. Start Background Download
       const res = await CapacitorDownloader.download({
         url: streamUrl,
         filename: `${key}.mp4`,
@@ -47,13 +58,16 @@ export async function saveVideoOffline(key, streamUrl, metadata, onProgress) {
         destination: Directory.Data
       });
 
-      // 2. Track Progress (Capacitor Downloader uses listeners)
+      // Cleanup listener
+      if (progressListener) progressListener.remove();
+
+      // 3. Track Progress (Capacitor Downloader uses listeners)
       // Note: Full persistent tracking would need a listener in a global context,
       // but here we just wait for completion for the immediate metadata save.
 
       const filePath = res.path; // Internal URI
 
-      // 3. Save metadata with local path
+      // 4. Save metadata with local path
       const meta = getMetadata();
       meta[key] = {
         ...metadata,
