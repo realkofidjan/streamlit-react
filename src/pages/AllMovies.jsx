@@ -175,7 +175,12 @@ function AllMovies() {
         )}
       </div>
 
-      <ContentModal content={modalContent} show={showModal} onClose={() => setShowModal(false)} />
+      <ContentModal
+        key={modalContent ? modalContent.id : 'movies-modal'}
+        content={modalContent}
+        show={showModal}
+        onClose={() => setShowModal(false)}
+      />
     </div>
   );
 }

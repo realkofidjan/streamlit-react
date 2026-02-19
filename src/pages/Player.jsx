@@ -36,6 +36,23 @@ function Player() {
     const [localEpisodeSet, setLocalEpisodeSet] = useState(new Set());
     const [mediaInfo, setMediaInfo] = useState(null);
 
+    // Autosave progress every 60 seconds
+    useEffect(() => {
+        if (loading || error || !streamUrl) return;
+
+        const saveInterval = setInterval(() => {
+            const player = document.querySelector('video');
+            if (player && !player.paused) {
+                handleProgress({
+                    currentTime: player.currentTime,
+                    duration: player.duration
+                });
+            }
+        }, 60000); // 1 minute
+
+        return () => clearInterval(saveInterval);
+    }, [streamUrl, loading, error, type, tmdbId, season, episode]);
+
     useEffect(() => {
         if (!tmdbId || !type) {
             setError('Missing parameters');
@@ -273,22 +290,7 @@ function Player() {
         );
     }
 
-    // Autosave progress every 60 seconds
-    useEffect(() => {
-        if (loading || error || !streamUrl) return;
 
-        const saveInterval = setInterval(() => {
-            const player = document.querySelector('video');
-            if (player && !player.paused) {
-                handleProgress({
-                    currentTime: player.currentTime,
-                    duration: player.duration
-                });
-            }
-        }, 60000); // 1 minute
-
-        return () => clearInterval(saveInterval);
-    }, [streamUrl, loading, error, type, tmdbId, season, episode]);
 
     return (
         <div className="player-page">

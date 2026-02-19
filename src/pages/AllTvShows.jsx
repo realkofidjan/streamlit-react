@@ -221,7 +221,12 @@ function AllTvShows() {
         )}
       </div>
 
-      <ContentModal content={modalContent} show={showModal} onClose={() => setShowModal(false)} />
+      <ContentModal
+        key={modalContent ? modalContent.id : 'tv-modal'}
+        content={modalContent}
+        show={showModal}
+        onClose={() => setShowModal(false)}
+      />
     </div>
   );
 }

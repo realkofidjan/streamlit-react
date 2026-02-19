@@ -363,7 +363,12 @@ function Home() {
         )}
       </div>
 
-      <ContentModal show={!!selectedContent} content={selectedContent} onClose={closeModal} />
+      <ContentModal
+        key={selectedContent ? selectedContent.id : 'modal-closed'}
+        show={!!selectedContent}
+        content={selectedContent}
+        onClose={closeModal}
+      />
     </div>
   );
 }

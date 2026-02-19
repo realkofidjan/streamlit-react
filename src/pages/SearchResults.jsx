@@ -132,7 +132,12 @@ function SearchResults() {
         </div>
       )}
 
-      <ContentModal content={modalContent} show={showModal} onClose={() => setShowModal(false)} />
+      <ContentModal
+        key={modalContent ? (modalContent.id || 'search-modal') : 'search-modal'}
+        content={modalContent}
+        show={showModal}
+        onClose={() => setShowModal(false)}
+      />
     </div>
   );
 }
