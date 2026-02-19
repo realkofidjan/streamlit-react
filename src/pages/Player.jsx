@@ -7,6 +7,7 @@ import {
 } from '../services/media';
 import { searchSubtitles, fetchSubtitleUrl } from '../services/subtitles';
 import { useUser } from '../contexts/UserContext';
+import { getOfflineVideos } from '../services/offlineStorage';
 import NetflixPlayer from '../components/NetflixPlayer';
 import './Player.css';
 
@@ -77,7 +78,25 @@ function Player() {
                 setLoading(false);
             }
         };
-        load();
+
+        const checkOffline = () => {
+            const key = type === 'movie' ? tmdbId : `${tmdbId}-s${season}e${episode}`;
+            const offline = getOfflineVideos().find(v => String(v.key) === String(key) || String(v.id) === String(tmdbId));
+            if (offline && offline.nativePath) {
+                console.log('Playing from offline local path:', offline.nativePath);
+                setStreamUrl(offline.nativePath);
+                setTitle(offline.title);
+                setPosterPath(offline.posterPath);
+                return true;
+            }
+            return false;
+        };
+
+        if (!checkOffline()) {
+            load();
+        } else {
+            setLoading(false);
+        }
     }, [tmdbId, type, season, episode]);
 
     // Subtitles

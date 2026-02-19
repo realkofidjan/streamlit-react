@@ -5,6 +5,8 @@ import { FaPlay, FaPlus, FaCheck, FaThumbsUp, FaTimes, FaDownload, FaChevronDown
 import { getMovieDetails, getTvShowDetails, getSimilarMovies, getSimilarTvShows, getImageUrl, getTvSeasonDetails } from '../services/tmdb';
 import { searchLocalMovies, searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes, getMediaUrl } from '../services/media';
 import { useUser } from '../contexts/UserContext';
+import { isVideoOffline, saveVideoOffline, removeOfflineVideo } from '../services/offlineStorage';
+import { Capacitor } from '@capacitor/core';
 import axios from 'axios';
 import './ContentModal.css';
 
@@ -23,6 +25,11 @@ function ContentModal({ content, onClose, show }) {
     // Track local availability
     const [localEpisodeSet, setLocalEpisodeSet] = useState(new Set());
     const [isLocalMovie, setIsLocalMovie] = useState(false);
+
+    // Download state
+    const [isDownloading, setIsDownloading] = useState({}); // { key: true/false }
+    const [downloadProgress, setDownloadProgress] = useState({}); // { key: 0.5 }
+    const isNative = Capacitor.isNativePlatform();
 
     // Content history stack for modal-to-modal navigation
     const [contentStack, setContentStack] = useState([]);
@@ -207,9 +214,49 @@ function ContentModal({ content, onClose, show }) {
         }
     };
 
-    const handleDownload = (e, targetItem) => {
+    // Native Download Logic for APK
+    const startNativeDownload = async (key, streamUrl, metadata) => {
+        if (isDownloading[key]) return;
+
+        setIsDownloading(prev => ({ ...prev, [key]: true }));
+        try {
+            await saveVideoOffline(key, streamUrl, metadata, (progress) => {
+                setDownloadProgress(prev => ({ ...prev, [key]: progress }));
+            });
+            // Cleanup state after initiation (Downloader runs in background)
+            // Note: True completion tracking would require a more complex listener
+            // setup, but for now we just show initiation.
+        } catch (err) {
+            console.error('Download failed', err);
+            alert('Download failed: ' + err.message);
+        } finally {
+            setIsDownloading(prev => ({ ...prev, [key]: false }));
+        }
+    };
+
+    const handleDownload = (e, targetItem, type) => {
         e.stopPropagation();
-        alert(`Download started for: ${targetItem.name || targetItem.title}`);
+        const key = type === 'movie' ? String(targetItem.id) : `${item.id}-s${selectedSeason}e${targetItem.episode_number}`;
+        const title = type === 'movie' ? targetItem.title : targetItem.name;
+        const poster = type === 'movie' ? targetItem.poster_path : targetItem.still_path || details.poster_path;
+
+        // On mobile, find the best stream URL to save
+        // We'll use the Vidfast/Vidsrc URL but since we are saving for offline,
+        // we ideally want a direct file link if available from server.
+        // For now, we use the library stream URL if it's local, or a proxy.
+        const streamUrl = type === 'movie'
+            ? `${getMediaUrl()}/api/movies/${encodeURIComponent(targetItem.filename)}`
+            : `${getMediaUrl()}/api/tv/${encodeURIComponent(item.name || item.title)}/s${selectedSeason}/${encodeURIComponent(targetItem.filename)}`;
+
+        startNativeDownload(key, streamUrl, {
+            id: targetItem.id,
+            title,
+            posterPath: poster,
+            type,
+            showId: item.id,
+            season: selectedSeason,
+            episode: targetItem.episode_number
+        });
     };
 
     // Request download for non-local content
@@ -506,6 +553,16 @@ function ContentModal({ content, onClose, show }) {
                                 <button className="modal-icon-btn" title="I like this">
                                     <FaThumbsUp />
                                 </button>
+
+                                {isNative && isLocalMovie && (
+                                    <button
+                                        className={`modal-icon-btn ${isDownloading[String(item.id)] ? 'downloading' : ''}`}
+                                        title="Save Offline"
+                                        onClick={(e) => handleDownload(e, details, 'movie')}
+                                    >
+                                        <FaDownload />
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -604,16 +661,39 @@ function ContentModal({ content, onClose, show }) {
                                                             </div>
 
                                                             {hasLocal ? (
-                                                                <button className="ep-play-btn" onClick={(e) => { e.stopPropagation(); handleEpisodePlay(selectedSeason, ep.episode_number, resumeTime); }}>
-                                                                    {resumeTime > 0 ? <FaPlay style={{ fontSize: '0.8rem' }} /> : <FaPlay />}
-                                                                </button>
+                                                                <div className="ep-action-btns">
+                                                                    {isNative && (
+                                                                        <button
+                                                                            className={`ep-download-btn ${isDownloading[epKey] ? 'downloading' : ''}`}
+                                                                            onClick={(e) => handleDownload(e, ep, 'episode')}
+                                                                            title="Download Episode"
+                                                                        >
+                                                                            <FaDownload />
+                                                                        </button>
+                                                                    )}
+                                                                    <button
+                                                                        className="ep-play-btn"
+                                                                        onClick={(e) => { e.stopPropagation(); handleEpisodePlay(selectedSeason, ep.episode_number, resumeTime); }}
+                                                                        title={resumeTime > 0 ? "Resume" : "Play"}
+                                                                    >
+                                                                        {resumeTime > 0 ? <FaPlay style={{ fontSize: '0.8rem' }} /> : <FaPlay />}
+                                                                    </button>
+                                                                </div>
                                                             ) : (
                                                                 <div className="ep-action-btns">
-                                                                    <button className="ep-stream-btn" onClick={(e) => { e.stopPropagation(); handleEpisodePlay(selectedSeason, ep.episode_number, resumeTime); }} title={resumeTime > 0 ? "Resume" : "Stream"}>
-                                                                        <FaPlay />
-                                                                    </button>
-                                                                    <button className="ep-download-btn" onClick={(e) => requestEpisodeDownload(e, selectedSeason, ep.episode_number, ep.name)} title="Request Download">
+                                                                    <button
+                                                                        className="ep-download-btn"
+                                                                        onClick={(e) => requestEpisodeDownload(e, selectedSeason, ep.episode_number, ep.name)}
+                                                                        title="Request Download"
+                                                                    >
                                                                         <FaDownload />
+                                                                    </button>
+                                                                    <button
+                                                                        className="ep-stream-btn"
+                                                                        onClick={(e) => { e.stopPropagation(); handleEpisodePlay(selectedSeason, ep.episode_number, resumeTime); }}
+                                                                        title="Stream"
+                                                                    >
+                                                                        <FaPlay />
                                                                     </button>
                                                                 </div>
                                                             )}
@@ -654,13 +734,16 @@ function ContentModal({ content, onClose, show }) {
                                         </div>
                                     </div>
                                 </div>
-                            )
-                        }
+                            )}
                     </>
-                )
-                }
-            </div >
-        </div >
+                )}
+
+
+                <button className="content-modal-close" onClick={onClose}>
+                    <FaTimes />
+                </button>
+            </div>
+        </div>
     );
 }
 

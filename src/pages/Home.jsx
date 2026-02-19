@@ -1,15 +1,20 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import HeroBillboard from '../components/HeroSearch';
 import MediaCard from '../components/MediaCard';
 import BackdropCard from '../components/BackdropCard';
 import ContentModal from '../components/ContentModal';
 import { useUser } from '../contexts/UserContext';
-import { getLibrary } from '../services/media';
+import {
+  getLibrary,
+  searchLocalMovies, getLocalMovieStreamUrl,
+  searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes, getLocalTvStreamUrl,
+} from '../services/media';
 import { searchMovies, searchTvShows, getTvShowDetails, getRecommendedMovies, getRecommendedTvShows, getTrendingDay, getImageUrl } from '../services/tmdb';
 import { cleanName, extractYear, pickBestResult } from '../utils/matchTmdb';
-import { getOfflineVideos, removeOfflineVideo, formatFileSize } from '../services/offlineStorage';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { isVideoOffline, getOfflineVideos, removeOfflineVideo, formatFileSize } from '../services/offlineStorage';
+import { searchSubtitles, fetchSubtitleUrl } from '../services/subtitles';
+import { FaChevronLeft, FaChevronRight, FaTimes } from 'react-icons/fa';
 import './Home.css';
 
 /* ===== Scrollable Netflix Row ===== */
@@ -76,6 +81,7 @@ function Home() {
   const [offlineVideos, setOfflineVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedContent, setSelectedContent] = useState(null);
+  const navigate = useNavigate();
 
   const openModal = (item, type) => {
     setSelectedContent({ ...item, type: type || item.media_type || 'movie' });
@@ -252,6 +258,14 @@ function Home() {
     });
   }
 
+  const handleRemoveOffline = (e, key) => {
+    e.stopPropagation();
+    if (window.confirm('Delete this download?')) {
+      removeOfflineVideo(key);
+      setOfflineVideos(getOfflineVideos());
+    }
+  };
+
   const continueWatchingRaw = [
     ...watchingMovies,
     ...watchingEpisodes,
@@ -321,6 +335,34 @@ function Home() {
           <NetflixRow title="Popular TV Shows">
             {filteredRecTv.slice(0, 20).map((s) => (
               <MediaCard key={s.id} item={s} type="tv" onClick={(i) => openModal(i, 'tv')} />
+            ))}
+          </NetflixRow>
+        )}
+
+        {offlineVideos.length > 0 && (
+          <NetflixRow title="Downloads" count={offlineVideos.length}>
+            {offlineVideos.map((v) => (
+              <div key={v.key} className="offline-card-container">
+                <MediaCard
+                  item={{
+                    ...v,
+                    id: v.tmdbId || v.id,
+                    title: v.title,
+                    name: v.title,
+                    poster_path: v.posterPath
+                  }}
+                  type={v.type}
+                  onClick={() => {
+                    const url = v.type === 'movie'
+                      ? `/play?type=movie&id=${v.id || v.tmdbId}`
+                      : `/play?type=episode&id=${v.showId}&season=${v.season}&episode=${v.episode}`;
+                    navigate(url);
+                  }}
+                />
+                <button className="remove-offline-btn" onClick={(e) => handleRemoveOffline(e, v.key)} title="Delete Download">
+                  <FaTimes />
+                </button>
+              </div>
             ))}
           </NetflixRow>
         )}
