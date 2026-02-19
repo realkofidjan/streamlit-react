@@ -234,19 +234,40 @@ function ContentModal({ content, onClose, show }) {
         }
     };
 
+
     const handleDownload = (e, targetItem, type) => {
         e.stopPropagation();
+
+        // Get the correct filename from state
+        let filename;
+        if (type === 'movie') {
+            filename = localFilename;
+        } else {
+            filename = localEpisodeFilenames[targetItem.episode_number];
+        }
+
+        if (!filename) {
+            alert('Cannot download: Source file not found locally on server.');
+            console.error('Missing filename for download', type, targetItem);
+            return;
+        }
+
         const key = type === 'movie' ? String(targetItem.id) : `${item.id}-s${selectedSeason}e${targetItem.episode_number}`;
         const title = type === 'movie' ? targetItem.title : targetItem.name;
         const poster = type === 'movie' ? targetItem.poster_path : targetItem.still_path || details.poster_path;
 
-        // On mobile, find the best stream URL to save
-        // We'll use the Vidfast/Vidsrc URL but since we are saving for offline,
-        // we ideally want a direct file link if available from server.
-        // For now, we use the library stream URL if it's local, or a proxy.
+        const baseUrl = getMediaUrl();
+        if (!baseUrl || baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')) {
+            alert('Cannot download from localhost. Please set your public Server URL in Settings.');
+            console.error('Invalid download URL base:', baseUrl);
+            return;
+        }
+
         const streamUrl = type === 'movie'
-            ? `${getMediaUrl()}/api/movies/${encodeURIComponent(targetItem.filename)}`
-            : `${getMediaUrl()}/api/tv/${encodeURIComponent(item.name || item.title)}/s${selectedSeason}/${encodeURIComponent(targetItem.filename)}`;
+            ? `${baseUrl}/api/movies/${encodeURIComponent(filename)}`
+            : `${baseUrl}/api/tv/${encodeURIComponent(item.name || item.title)}/s${selectedSeason}/${encodeURIComponent(filename)}`;
+
+        console.log('Starting native download:', streamUrl);
 
         startNativeDownload(key, streamUrl, {
             id: targetItem.id,
@@ -528,13 +549,6 @@ function ContentModal({ content, onClose, show }) {
                                                 ? `${localEpisodeSet.has(seasonDetails.episodes[0].episode_number) ? 'Play' : 'Stream'} S${selectedSeason}E${seasonDetails.episodes[0].episode_number}`
                                                 : 'Play')
                                         }
-                                    </button>
-                                )}
-
-                                {/* Download — only for local movies */}
-                                {isMovie && isLocalMovie && (
-                                    <button className="modal-icon-btn" title="Download" onClick={(e) => handleDownload(e, item)}>
-                                        <FaDownload />
                                     </button>
                                 )}
 
