@@ -331,24 +331,26 @@ function ContentModal({ content, onClose, show }) {
 
     const resumeInfo = getResumeInfo();
 
-    // Play movie — local goes to /play, non-local opens vidfast stream
+    // Play movie — local goes to /play, non-local opens stream
     const handlePlayMovie = (startTime = 0) => {
         if (isLocalMovie) {
             onClose();
             navigate(`/play?type=movie&id=${item.id}${startTime > 0 ? `&t=${startTime}` : ''}`);
         } else {
-            setStreamUrl(`https://vidfast.pro/movie/${item.id}`);
+            // Updated to vidsrc.to - often more reliable than vidfast
+            setStreamUrl(`https://vidsrc.to/embed/movie/${item.id}`);
         }
     };
 
-    // Play episode — local goes to /play, non-local opens vidfast stream
+    // Play episode — local goes to /play, non-local opens stream
     const handleEpisodePlay = (seasonNum, episodeNum, startTime = 0) => {
         const hasLocal = localEpisodeSet.has(episodeNum);
         if (hasLocal) {
             onClose();
             navigate(`/play?type=episode&id=${item.id}&season=${seasonNum}&episode=${episodeNum}${startTime > 0 ? `&t=${startTime}` : ''}`);
         } else {
-            setStreamUrl(`https://vidfast.pro/tv/${item.id}/${seasonNum}/${episodeNum}`);
+            // Updated to vidsrc.to
+            setStreamUrl(`https://vidsrc.to/embed/tv/${item.id}/${seasonNum}/${episodeNum}`);
         }
     };
 
