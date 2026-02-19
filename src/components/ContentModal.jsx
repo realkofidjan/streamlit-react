@@ -365,8 +365,8 @@ function ContentModal({ content, onClose, show }) {
                         className="stream-iframe"
                         allowFullScreen
                         title="Stream"
-                        allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-                        referrerPolicy="origin"
+                        allow="autoplay; fullscreen; picture-in-picture; encrypted-media; presentation"
+                        referrerPolicy="no-referrer"
                     />
                 </div>
             </div>
