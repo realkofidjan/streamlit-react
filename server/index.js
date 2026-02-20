@@ -923,10 +923,18 @@ app.get('/api/library/metadata', async (req, res) => {
       } catch (e) { /* skip */ }
     }
 
+    // Deduplicate matched TV Shows by TMDB ID
+    const seenTvIds = new Set();
+    const finalTvShows = tvResults.filter(show => {
+      if (seenTvIds.has(show.id)) return false;
+      seenTvIds.add(show.id);
+      return true;
+    });
+
     // Compute Badges
     const today = new Date().toISOString().split('T')[0];
     const badges = {};
-    for (const show of tvResults) {
+    for (const show of finalTvShows) {
       try {
         const details = await fetchTmdbCache(`tv/${show.id}`, {}, api_key);
         const nextEp = details.next_episode_to_air;
@@ -941,7 +949,7 @@ app.get('/api/library/metadata', async (req, res) => {
       } catch (e) { /* skip */ }
     }
 
-    res.json({ movies: finalMovies, tvShows: tvResults, tvBadges: badges });
+    res.json({ movies: finalMovies, tvShows: finalTvShows, tvBadges: badges });
   } catch (err) {
     console.error('Metadata endpoint error:', err);
     res.status(500).json({ error: 'Failed to generate metadata' });

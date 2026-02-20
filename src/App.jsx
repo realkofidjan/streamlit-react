@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import { UserProvider, useUser } from './contexts/UserContext';
 import ServerAlert from './components/ServerAlert';
 import Header from './components/Header';
@@ -95,7 +96,7 @@ function App() {
         persistOptions={{
           persister: localStoragePersister,
           maxAge: 1000 * 60 * 60 * 24, // 24 hours
-          buster: 'v1.1.1'
+          buster: 'v1.0.3'
         }}
       >
         <UserProvider>

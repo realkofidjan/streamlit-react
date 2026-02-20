@@ -92,7 +92,7 @@ function Home() {
   const { data: metaData, isLoading: metaLoading } = useQuery({
     queryKey: ['libraryMetadata'],
     queryFn: () => getLibraryMetadata().then(res => res.data).catch(() => ({ movies: [], tvShows: [], tvBadges: {} })),
-    staleTime: 1000 * 60 * 60 * 24, // 24 hours
+    staleTime: 1000 * 60 * 5, // 5 mins
   });
 
   const { data: recommendedMovies = [], isLoading: recMovLoading } = useQuery({
