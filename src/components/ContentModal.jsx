@@ -8,6 +8,7 @@ import { useUser } from '../contexts/UserContext';
 import { isVideoOffline, saveVideoOffline, removeOfflineVideo } from '../services/offlineStorage';
 import { Capacitor } from '@capacitor/core';
 import axios from 'axios';
+import { useQuery } from '@tanstack/react-query';
 import './ContentModal.css';
 
 function ContentModal({ content, onClose, show }) {
@@ -15,130 +16,77 @@ function ContentModal({ content, onClose, show }) {
     const { currentUser, addToWatchlist, removeFromWatchlist } = useUser();
     const overlayRef = useRef(null);
 
-    const [details, setDetails] = useState(null);
-    const [similar, setSimilar] = useState([]);
-    const [seasonDetails, setSeasonDetails] = useState(null);
     const [selectedSeason, setSelectedSeason] = useState(1);
-    const [loading, setLoading] = useState(false);
     const [showSeasonDropdown, setShowSeasonDropdown] = useState(false);
 
-    // Track local availability
-    const [localEpisodeSet, setLocalEpisodeSet] = useState(new Set());
-    const [isLocalMovie, setIsLocalMovie] = useState(false);
-
     // Download state
-    const [isDownloading, setIsDownloading] = useState({}); // { key: true/false }
-    const [downloadProgress, setDownloadProgress] = useState({}); // { key: 0.5 }
+    const [isDownloading, setIsDownloading] = useState({});
+    const [downloadProgress, setDownloadProgress] = useState({});
     const isNative = Capacitor.isNativePlatform();
 
-    // Content history stack for modal-to-modal navigation
+    // Content stack ...
     const [contentStack, setContentStack] = useState([]);
-
-    // Current content being displayed (could be from stack)
     const [currentContent, setCurrentContent] = useState(content);
 
-    // Streaming overlay for non-local content
-    const [streamUrl, setStreamUrl] = useState(null);
-    const [showAdWarning, setShowAdWarning] = useState(true);
-
-    // Reset warning when stream opens
+    // reset currentContent when prop changes
     useEffect(() => {
-        if (streamUrl) setShowAdWarning(true);
-    }, [streamUrl]);
-
-    // Reset when root content changes
-    useEffect(() => {
-        if (!content) return;
-        setContentStack([]);
-        setCurrentContent(content);
-        setStreamUrl(null);
+        if (content) {
+            setContentStack([]);
+            setCurrentContent(content);
+            setStreamUrl(null);
+            setShowSeasonDropdown(false);
+            setSelectedSeason(1);
+        }
     }, [content]);
 
-    // Body scroll lock — only when modal is showing
-    useEffect(() => {
-        if (show) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
-        return () => {
-            document.body.style.overflow = '';
-        };
-    }, [show]);
+    const itemId = currentContent?.id;
+    const itemType = currentContent?.type || 'movie';
+    const itemTitle = currentContent?.title || currentContent?.name || '';
 
-    // Fetch data when currentContent changes
-    useEffect(() => {
-        if (!currentContent) return;
-        let cancelled = false;
+    // 1. Fetch Details
+    const { data: details, isLoading: detailsLoading } = useQuery({
+        queryKey: ['details', itemType, itemId],
+        queryFn: () => (itemType === 'movie' ? getMovieDetails(itemId) : getTvShowDetails(itemId)).then(r => r.data),
+        enabled: !!itemId,
+        staleTime: 1000 * 60 * 30,
+    });
 
-        setDetails(null);
-        setSimilar([]);
-        setSeasonDetails(null);
-        setSelectedSeason(1);
-        setLocalEpisodeSet(new Set());
-        setIsLocalMovie(false);
-        setLoading(true);
-        setStreamUrl(null);
+    // 2. Fetch Similar
+    const { data: similar = [] } = useQuery({
+        queryKey: ['similar', itemType, itemId],
+        queryFn: () => (itemType === 'movie' ? getSimilarMovies(itemId) : getSimilarTvShows(itemId)).then(r => r.data.results || []),
+        enabled: !!itemId,
+        staleTime: 1000 * 60 * 30,
+    });
 
-        const fetchInfo = async () => {
-            try {
-                const isMovie = currentContent.type === 'movie';
-                const id = currentContent.id;
+    // 3. Check Local Movie (Parallel!)
+    const { data: localMovieFiles = [] } = useQuery({
+        queryKey: ['localSearch', 'movie', itemTitle],
+        queryFn: () => searchLocalMovies(itemTitle).then(r => r.data || []),
+        enabled: !!itemTitle && itemType === 'movie',
+        staleTime: 1000 * 60 * 5,
+    });
+    const isLocalMovie = localMovieFiles.length > 0;
+    const localFilename = localMovieFiles[0]?.filename; // Derived
 
-                let detailRes, similarRes;
-                if (isMovie) {
-                    [detailRes, similarRes] = await Promise.all([
-                        getMovieDetails(id),
-                        getSimilarMovies(id).catch(() => ({ data: { results: [] } }))
-                    ]);
+    // 4. Fetch Season Details (for TV)
+    const { data: seasonDetails } = useQuery({
+        queryKey: ['season', itemId, selectedSeason],
+        queryFn: () => getTvSeasonDetails(itemId, selectedSeason).then(r => r.data),
+        enabled: itemType === 'tv' && !!itemId,
+        staleTime: 1000 * 60 * 30,
+    });
 
-                    // Check local availability for movies
-                    try {
-                        const localRes = await searchLocalMovies(detailRes.data.title);
-                        if (!cancelled) setIsLocalMovie(localRes.data.length > 0);
-                    } catch {
-                        if (!cancelled) setIsLocalMovie(false);
-                    }
-                } else {
-                    [detailRes, similarRes] = await Promise.all([
-                        getTvShowDetails(id),
-                        getSimilarTvShows(id).catch(() => ({ data: { results: [] } }))
-                    ]);
-                }
+    // 5. Check Local Episodes (TV)
+    const { data: localTvData = { set: new Set(), filenames: {} } } = useQuery({
+        queryKey: ['localEpisodes', itemTitle, selectedSeason],
+        queryFn: async () => {
+            const res = await searchLocalTvShows(itemTitle);
+            if (res.data.length === 0) return { set: new Set(), filenames: {} };
 
-                if (cancelled) return;
-
-                setDetails(detailRes.data);
-                setSimilar(similarRes.data.results || []);
-
-                if (!isMovie) {
-                    // Fetch Season 1 by default
-                    const seasonRes = await getTvSeasonDetails(id, 1).catch(() => null);
-                    if (!cancelled && seasonRes) setSeasonDetails(seasonRes.data);
-
-                    // Check local episode availability
-                    checkLocalEpisodes(detailRes.data, 1, cancelled);
-                }
-
-            } catch (err) {
-                console.error("Failed to fetch modal details", err);
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        };
-
-        if (show) {
-            fetchInfo();
-        }
-
-        return () => { cancelled = true; };
-    }, [currentContent, show]);
-
-    const checkLocalEpisodes = async (showData, seasonNum, cancelled) => {
-        try {
-            const res = await searchLocalTvShows(showData.name);
-            if (res.data.length === 0) return;
             const localEpNums = new Set();
+            const filenames = {};
+
             for (const match of res.data) {
                 const seasonsRes = await getLocalTvSeasons(match.name);
                 for (const folder of seasonsRes.data) {
@@ -147,15 +95,38 @@ function ContentModal({ content, onClose, show }) {
                         const sm = ep.filename.match(/[Ss](\d+)/);
                         const em = ep.filename.match(/[Ee](\d+)/);
                         if (!sm || !em) continue;
-                        if (parseInt(sm[1]) === seasonNum) {
-                            localEpNums.add(parseInt(em[1]));
+                        if (parseInt(sm[1]) === selectedSeason) {
+                            const epNum = parseInt(em[1]);
+                            localEpNums.add(epNum);
+                            filenames[epNum] = ep.filename;
                         }
                     }
                 }
             }
-            if (!cancelled) setLocalEpisodeSet(localEpNums);
-        } catch { /* server not running */ }
-    };
+            return { set: localEpNums, filenames };
+        },
+        enabled: itemType === 'tv' && !!itemTitle,
+        staleTime: 1000 * 60 * 5,
+    });
+
+    const localEpisodeSet = localTvData.set;
+    const localEpisodeFilenames = localTvData.filenames;
+
+    // Derived loading state
+    const loading = detailsLoading;
+
+    // Body scroll lock
+    useEffect(() => {
+        if (show) document.body.style.overflow = 'hidden';
+        else document.body.style.overflow = '';
+        return () => { document.body.style.overflow = ''; };
+    }, [show]);
+
+    // Ad Warning Reset
+    const [streamUrl, setStreamUrl] = useState(null);
+    const [showAdWarning, setShowAdWarning] = useState(true);
+    useEffect(() => { if (streamUrl) setShowAdWarning(true); }, [streamUrl]);
+
 
     // Handle season change
     const handleSeasonChange = async (seasonNum) => {

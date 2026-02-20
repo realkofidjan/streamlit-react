@@ -69,17 +69,16 @@ function NetflixRow({ title, children, count, className }) {
   );
 }
 
+import { useQuery } from '@tanstack/react-query';
+
+// ... imports remain the same
+
 function Home() {
   const { currentUser, clearContinueWatching } = useUser();
-  const [library, setLibrary] = useState({ movies: [], tvShows: [] });
   const [localMovieTmdb, setLocalMovieTmdb] = useState([]);
   const [localTvTmdb, setLocalTvTmdb] = useState([]);
-  const [recommendedMovies, setRecommendedMovies] = useState([]);
-  const [recommendedTv, setRecommendedTv] = useState([]);
-  const [trending, setTrending] = useState([]);
   const [tvBadges, setTvBadges] = useState({});
   const [offlineVideos, setOfflineVideos] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [selectedContent, setSelectedContent] = useState(null);
   const navigate = useNavigate();
 
@@ -92,27 +91,32 @@ function Home() {
     setOfflineVideos(getOfflineVideos());
   }, []);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [libRes, recMovies, recTv, trendRes] = await Promise.all([
-          getLibrary().catch(() => ({ data: { movies: [], tvShows: [] } })),
-          getRecommendedMovies().catch(() => ({ data: { results: [] } })),
-          getRecommendedTvShows().catch(() => ({ data: { results: [] } })),
-          getTrendingDay().catch(() => ({ data: { results: [] } })),
-        ]);
-        setLibrary(libRes.data);
-        setRecommendedMovies(recMovies.data.results || []);
-        setRecommendedTv(recTv.data.results || []);
-        setTrending(trendRes.data.results || []);
-      } catch {
-        // Ignore
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+  // TanStack Query for Data Fetching
+  const { data: library = { movies: [], tvShows: [] }, isLoading: libLoading } = useQuery({
+    queryKey: ['library'],
+    queryFn: () => getLibrary().then(res => res.data).catch(() => ({ movies: [], tvShows: [] })),
+    staleTime: 1000 * 60 * 5, // 5 mins
+  });
+
+  const { data: recommendedMovies = [], isLoading: recMovLoading } = useQuery({
+    queryKey: ['recommendedMovies'],
+    queryFn: () => getRecommendedMovies().then(res => res.data.results || []).catch(() => []),
+    staleTime: 1000 * 60 * 30, // 30 mins
+  });
+
+  const { data: recommendedTv = [], isLoading: recTvLoading } = useQuery({
+    queryKey: ['recommendedTv'],
+    queryFn: () => getRecommendedTvShows().then(res => res.data.results || []).catch(() => []),
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const { data: trending = [], isLoading: trendLoading } = useQuery({
+    queryKey: ['trending'],
+    queryFn: () => getTrendingDay().then(res => res.data.results || []).catch(() => []),
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+
+  const loading = libLoading || recMovLoading || recTvLoading || trendLoading;
 
   // Match local movies to TMDB
   useEffect(() => {

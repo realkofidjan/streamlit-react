@@ -84,14 +84,19 @@ function AppRoutes() {
   );
 }
 
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './lib/queryClient';
+
 function App() {
   return (
     <Router>
-      <UserProvider>
-        <div className="app">
-          <AppRoutes />
-        </div>
-      </UserProvider>
+      <QueryClientProvider client={queryClient}>
+        <UserProvider>
+          <div className="app">
+            <AppRoutes />
+          </div>
+        </UserProvider>
+      </QueryClientProvider>
     </Router>
   );
 }
