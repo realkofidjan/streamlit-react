@@ -1,16 +1,35 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import ContentModal from '../components/ContentModal';
 import MediaCard from '../components/MediaCard';
-import { getLibrary } from '../services/media';
-import { searchMovies, getMovieGenres } from '../services/tmdb';
-import { cleanName, extractYear, pickBestResult } from '../utils/matchTmdb';
+import { getLibraryMetadata } from '../services/media';
+import { getMovieGenres } from '../services/tmdb';
 import { FaFilter, FaSortAmountDown } from 'react-icons/fa';
 import './AllMedia.css';
 
 function AllMovies() {
-  const [loading, setLoading] = useState(true);
-  const [movies, setMovies] = useState([]);
-  const [genres, setGenres] = useState({});
+  const { data: metaData, isLoading: metaLoading } = useQuery({
+    queryKey: ['libraryMetadata'],
+    queryFn: () => getLibraryMetadata().then(res => res.data).catch(() => ({ movies: [], tvShows: [], tvBadges: {} })),
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
+
+  const { data: genresObj = {}, isLoading: genresLoading } = useQuery({
+    queryKey: ['movieGenres'],
+    queryFn: async () => {
+      const genreRes = await getMovieGenres();
+      const genreMap = {};
+      genreRes.data.genres.forEach(g => genreMap[g.id] = g.name);
+      return genreMap;
+    },
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
+
+  const loading = metaLoading || genresLoading;
+  const movies = metaData?.movies || [];
+  const genres = genresObj;
+
+
   const [modalContent, setModalContent] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
@@ -22,56 +41,6 @@ function AllMovies() {
     setModalContent({ ...item, type: 'movie' });
     setShowModal(true);
   };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        // Fetch Genres
-        const genreRes = await getMovieGenres();
-        const genreMap = {};
-        genreRes.data.genres.forEach(g => genreMap[g.id] = g.name);
-        setGenres(genreMap);
-
-        // Fetch Movies
-        const libRes = await getLibrary();
-        const localMovies = libRes.data.movies || [];
-        const results = [];
-
-        const BATCH_SIZE = 3;
-        for (let i = 0; i < localMovies.length; i += BATCH_SIZE) {
-          const batch = localMovies.slice(i, i + BATCH_SIZE);
-          const promises = batch.map(async (m) => {
-            try {
-              const year = extractYear(m.name);
-              const res = await searchMovies(cleanName(m.name));
-              const best = pickBestResult(res.data.results, year, 'release_date');
-              if (best) return { ...best, localFilename: m.filename };
-            } catch { /* skip */ }
-            return null;
-          });
-          const batchResults = await Promise.all(promises);
-          results.push(...batchResults.filter(Boolean));
-          // Rate limit: wait 300ms between batches
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
-
-        const seen = new Set();
-        const unique = results.filter((m) => {
-          if (seen.has(m.id)) return false;
-          seen.add(m.id);
-          return true;
-        });
-
-        setMovies(unique);
-      } catch (err) {
-        console.error("Failed to load movies", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
 
   const processedMovies = useMemo(() => {
     let result = [...movies];

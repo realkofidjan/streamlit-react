@@ -6,7 +6,7 @@ import BackdropCard from '../components/BackdropCard';
 import ContentModal from '../components/ContentModal';
 import { useUser } from '../contexts/UserContext';
 import {
-  getLibrary,
+  getLibraryMetadata,
   searchLocalMovies, getLocalMovieStreamUrl,
   searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes, getLocalTvStreamUrl,
 } from '../services/media';
@@ -75,9 +75,6 @@ import { useQuery } from '@tanstack/react-query';
 
 function Home() {
   const { currentUser, clearContinueWatching } = useUser();
-  const [localMovieTmdb, setLocalMovieTmdb] = useState([]);
-  const [localTvTmdb, setLocalTvTmdb] = useState([]);
-  const [tvBadges, setTvBadges] = useState({});
   const [offlineVideos, setOfflineVideos] = useState([]);
   const [selectedContent, setSelectedContent] = useState(null);
   const navigate = useNavigate();
@@ -91,11 +88,11 @@ function Home() {
     setOfflineVideos(getOfflineVideos());
   }, []);
 
-  // TanStack Query for Data Fetching
-  const { data: library = { movies: [], tvShows: [] }, isLoading: libLoading } = useQuery({
-    queryKey: ['library'],
-    queryFn: () => getLibrary().then(res => res.data).catch(() => ({ movies: [], tvShows: [] })),
-    staleTime: 1000 * 60 * 5, // 5 mins
+  // Fetch unified library metadata from the backend
+  const { data: metaData, isLoading: metaLoading } = useQuery({
+    queryKey: ['libraryMetadata'],
+    queryFn: () => getLibraryMetadata().then(res => res.data).catch(() => ({ movies: [], tvShows: [], tvBadges: {} })),
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
   });
 
   const { data: recommendedMovies = [], isLoading: recMovLoading } = useQuery({
@@ -116,95 +113,11 @@ function Home() {
     staleTime: 1000 * 60 * 60, // 1 hour
   });
 
-  const loading = libLoading || recMovLoading || recTvLoading || trendLoading;
+  const localMovieTmdb = metaData?.movies || [];
+  const localTvTmdb = metaData?.tvShows || [];
+  const tvBadges = metaData?.tvBadges || {};
 
-  // Match local movies to TMDB
-  useEffect(() => {
-    if (library.movies.length === 0) return;
-    const matchMovies = async () => {
-      const results = [];
-      for (let i = 0; i < library.movies.length; i += 5) {
-        const batch = library.movies.slice(i, i + 5);
-        const promises = batch.map(async (m) => {
-          try {
-            const year = extractYear(m.name);
-            const res = await searchMovies(cleanName(m.name));
-            const best = pickBestResult(res.data.results, year, 'release_date');
-            if (best) return { ...best, localFilename: m.filename };
-          } catch { /* skip */ }
-          return null;
-        });
-        const batchResults = await Promise.all(promises);
-        results.push(...batchResults.filter(Boolean));
-      }
-      const seen = new Set();
-      setLocalMovieTmdb(results.filter((m) => {
-        if (seen.has(m.id)) return false;
-        seen.add(m.id);
-        return true;
-      }));
-    };
-    matchMovies();
-  }, [library.movies]);
-
-  // Match local TV shows to TMDB
-  useEffect(() => {
-    if (library.tvShows.length === 0) return;
-    const matchTv = async () => {
-      const results = [];
-      for (let i = 0; i < library.tvShows.length; i += 5) {
-        const batch = library.tvShows.slice(i, i + 5);
-        const promises = batch.map(async (s) => {
-          try {
-            const year = extractYear(s.name);
-            const res = await searchTvShows(cleanName(s.name));
-            const best = pickBestResult(res.data.results, year, 'first_air_date');
-            if (best) return { ...best, localName: s.name };
-          } catch { /* skip */ }
-          return null;
-        });
-        const batchResults = await Promise.all(promises);
-        results.push(...batchResults.filter(Boolean));
-      }
-      const seen = new Set();
-      setLocalTvTmdb(results.filter((s) => {
-        if (seen.has(s.id)) return false;
-        seen.add(s.id);
-        return true;
-      }));
-    };
-    matchTv();
-  }, [library.tvShows]);
-
-  // Compute TV show badges (new episodes / coming soon)
-  useEffect(() => {
-    if (localTvTmdb.length === 0) return;
-    const computeBadges = async () => {
-      const badges = {};
-      const today = new Date().toISOString().split('T')[0];
-      for (const show of localTvTmdb) {
-        try {
-          const res = await getTvShowDetails(show.id);
-          const details = res.data;
-          const nextEp = details.next_episode_to_air;
-          const lastEp = details.last_episode_to_air;
-          if (nextEp && nextEp.air_date > today) {
-            badges[show.id] = { type: 'coming-soon', date: nextEp.air_date };
-          } else if (details.status === 'Returning Series' && lastEp && lastEp.air_date) {
-            const daysSinceLast = (Date.now() - new Date(lastEp.air_date).getTime()) / (1000 * 60 * 60 * 24);
-            if (daysSinceLast < 14) {
-              badges[show.id] = { type: 'new-episodes' };
-            }
-          }
-          if (nextEp && nextEp.air_date <= today) {
-            badges[show.id] = { type: 'new-episodes' };
-          }
-        } catch { /* skip */ }
-      }
-      setTvBadges(badges);
-    };
-    computeBadges();
-  }, [localTvTmdb]);
+  const loading = metaLoading || recMovLoading || recTvLoading || trendLoading;
 
   const localMovieIds = new Set(localMovieTmdb.map((m) => m.id));
   const localTvIds = new Set(localTvTmdb.map((s) => s.id));

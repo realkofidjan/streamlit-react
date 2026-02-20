@@ -47,3 +47,5 @@ export const getLocalTvStreamUrl = (showName, seasonName, filename) =>
   `${getMediaUrl()}/api/tv/${encodeURIComponent(showName)}/${encodeURIComponent(seasonName)}/stream/${encodeURIComponent(filename)}?_cb=${Date.now()}`;
 
 export const getLibrary = () => getApi().get('/api/library');
+
+export const getLibraryMetadata = () => getApi().get('/api/library/metadata');

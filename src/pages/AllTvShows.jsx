@@ -1,15 +1,54 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import ContentModal from '../components/ContentModal';
 import MediaCard from '../components/MediaCard';
-import { getLibrary } from '../services/media';
-import { searchTvShows, getTvShowDetails, getTvGenres } from '../services/tmdb';
-import { cleanName, extractYear, pickBestResult } from '../utils/matchTmdb';
+import { useUser } from '../contexts/UserContext';
+import { getLibraryMetadata } from '../services/media';
+import { getTvGenres } from '../services/tmdb';
 import './AllMedia.css';
 
 function AllTvShows() {
-  const [loading, setLoading] = useState(true);
-  const [shows, setShows] = useState([]);
-  const [genres, setGenres] = useState({});
+  const { currentUser } = useUser();
+
+  const { data: metaData, isLoading: metaLoading } = useQuery({
+    queryKey: ['libraryMetadata'],
+    queryFn: () => getLibraryMetadata().then(res => res.data).catch(() => ({ movies: [], tvShows: [], tvBadges: {} })),
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
+
+  const { data: genresObj = {}, isLoading: genresLoading } = useQuery({
+    queryKey: ['tvGenres'],
+    queryFn: async () => {
+      const genreRes = await getTvGenres();
+      const genreMap = {};
+      genreRes.data.genres.forEach(g => genreMap[g.id] = g.name);
+      return genreMap;
+    },
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
+
+  const loading = metaLoading || genresLoading;
+
+  // Attach badges and watched status to shows
+  const shows = useMemo(() => {
+    if (!metaData?.tvShows) return [];
+    return metaData.tvShows.map(show => {
+      let isFullyWatched = false;
+      // Note: Full fully-watched checking requires `number_of_episodes` from details, 
+      // but without details here we might skip this badge or approximate it. 
+      // The old logic fetched details. For now, we omit the fully-watched check 
+      // to rely purely on the fast metadata endpoint, or attach the badge from backend.
+      return {
+        ...show,
+        badge: metaData.tvBadges?.[show.id] || 'local',
+        isFullyWatched
+      };
+    });
+  }, [metaData, currentUser]);
+
+  const genres = genresObj;
+
+
   const [modalContent, setModalContent] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
@@ -21,103 +60,6 @@ function AllTvShows() {
     setModalContent({ ...item, type: 'tv' });
     setShowModal(true);
   };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        // Fetch Genres
-        const genreRes = await getTvGenres();
-        const genreMap = {};
-        genreRes.data.genres.forEach(g => genreMap[g.id] = g.name);
-        setGenres(genreMap);
-
-        // Fetch Shows
-        const libRes = await getLibrary();
-        const localShows = libRes.data.tvShows || [];
-        const results = [];
-
-        const BATCH_SIZE = 3;
-        for (let i = 0; i < localShows.length; i += BATCH_SIZE) {
-          const batch = localShows.slice(i, i + BATCH_SIZE);
-          const promises = batch.map(async (s) => {
-            try {
-              const year = extractYear(s.name);
-              const res = await searchTvShows(cleanName(s.name));
-              const best = pickBestResult(res.data.results, year, 'first_air_date');
-              if (best) {
-                // Get detailed info for badge logic
-                let badge = null;
-                try {
-                  const detailRes = await getTvShowDetails(best.id);
-                  const detail = detailRes.data;
-                  const now = new Date();
-                  const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
-                  const threeMonthsAhead = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate());
-
-                  if (detail.seasons && detail.seasons.length > 0) {
-                    const latestSeason = detail.seasons
-                      .filter(sea => sea.season_number > 0 && sea.air_date)
-                      .sort((a, b) => new Date(b.air_date) - new Date(a.air_date))[0];
-
-                    if (latestSeason) {
-                      const airDate = new Date(latestSeason.air_date);
-                      if (airDate >= threeMonthsAgo && airDate <= now && latestSeason.season_number > 1) {
-                        badge = { type: 'new-episodes' };
-                      }
-                    }
-                    if (!badge && detail.next_episode_to_air) {
-                      const nextAir = new Date(detail.next_episode_to_air.air_date);
-                      if (nextAir > now && nextAir <= threeMonthsAhead) {
-                        badge = { type: 'coming-soon' };
-                      }
-                    }
-                  }
-                } catch { }
-
-                // Check if fully watched
-                let isFullyWatched = false;
-                try {
-                  // Using detail from above
-                  if (detail && detail.number_of_episodes > 0) {
-                    const totalEp = detail.number_of_episodes;
-                    // Count watched episodes in history
-                    const watchedCount = Object.keys(currentUser?.watchHistory?.episodes || {})
-                      .filter(k => k.startsWith(`${best.id}-`) && currentUser.watchHistory.episodes[k].progress >= 0.97)
-                      .length;
-                    if (watchedCount >= totalEp) {
-                      isFullyWatched = true;
-                    }
-                  }
-                } catch { }
-
-                return { ...best, localName: s.name, badge: badge || 'local', isFullyWatched };
-              }
-            } catch { /* skip */ }
-            return null;
-          });
-          const batchResults = await Promise.all(promises);
-          results.push(...batchResults.filter(Boolean));
-          // Rate limit: wait 300ms between batches
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
-
-        const seen = new Set();
-        const unique = results.filter((s) => {
-          if (seen.has(s.id)) return false;
-          seen.add(s.id);
-          return true;
-        });
-
-        setShows(unique);
-      } catch (err) {
-        console.error("Failed to load TV shows", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
 
   const processedShows = useMemo(() => {
     let result = [...shows];

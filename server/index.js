@@ -689,10 +689,6 @@ app.get('/api/subtitles/search', async (req, res) => {
   try {
     console.log(`[API] Subtitle Search: TMDB=${tmdb_id}, Query=${query}, Type=${type}, S=${season} E=${episode}, Lang=${languages}, File=${filename}`);
 
-    // Construct params
-    // If we have a specific query (like Show Name), prioritize it over ID if the ID is suspected to be wrong?
-    // For now, let's just use what is sent.
-
     const params = new URLSearchParams({ languages: languages || 'en' });
     if (tmdb_id) params.set('tmdb_id', tmdb_id);
     if (query) params.set('query', query);
@@ -719,10 +715,9 @@ app.get('/api/subtitles/search', async (req, res) => {
       const others = results.filter(s => s.attributes.language !== 'en');
 
       if (filename && en.length > 0) {
-        // Simple scoring: count how many "parts" of the filename appear in the release name
-        // Cleaning: remove extension, split by dots/spaces/hyphens
+        // Simple scoring
         const cleanName = filename.toLowerCase().replace(/\.[^/.]+$/, "").replace(/[^a-z0-9]/g, " ");
-        const tokens = cleanName.split(/\s+/).filter(t => t.length > 2); // only significant tokens
+        const tokens = cleanName.split(/\s+/).filter(t => t.length > 2);
 
         en.forEach(sub => {
           let score = 0;
@@ -740,9 +735,8 @@ app.get('/api/subtitles/search', async (req, res) => {
         en.sort((a, b) => b._score - a._score);
       }
 
-      // Limit English results to top 5 best matches
+      // Limit English results
       data.data = [...en.slice(0, 5), ...others];
-      console.log(`[API] Sorted Subtitles. Top match: ${data.data[0]?.attributes?.release} (Score: ${data.data[0]?._score})`);
     }
 
     res.json(data);
@@ -767,7 +761,6 @@ app.get('/api/subtitles/download', async (req, res) => {
   if (!file_id) return res.status(400).json({ error: 'file_id required' });
 
   try {
-    // Step 1: Request download link
     const dlRes = await fetch(`${OPENSUBTITLES_BASE}/download`, {
       method: 'POST',
       headers: {
@@ -778,14 +771,11 @@ app.get('/api/subtitles/download', async (req, res) => {
       body: JSON.stringify({ file_id: parseInt(file_id) }),
     });
     const dlData = await dlRes.json();
-    console.log(`[subtitles] Download API response (status ${dlRes.status}):`, JSON.stringify(dlData));
     if (!dlData.link) return res.status(404).json({ error: 'No download link returned', details: dlData });
 
-    // Step 2: Fetch the SRT content
     const srtRes = await fetch(dlData.link);
     const srtText = await srtRes.text();
 
-    // Step 3: Convert to VTT and return
     const vtt = srtToVtt(srtText);
     res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -793,6 +783,168 @@ app.get('/api/subtitles/download', async (req, res) => {
   } catch (err) {
     console.error('Subtitle download error:', err.message);
     res.status(500).json({ error: 'Subtitle download failed' });
+  }
+});
+
+// ========== TMDB Server-Side Cache ==========
+const axios = require('axios');
+const TMDB_CACHE_FILE = path.join(DATA_DIR, 'tmdb_cache.json');
+let tmdbCache = {};
+
+// Load cache into memory
+try {
+  if (fs.existsSync(TMDB_CACHE_FILE)) {
+    tmdbCache = JSON.parse(fs.readFileSync(TMDB_CACHE_FILE, 'utf-8'));
+  }
+} catch (e) {
+  console.error('Failed to load TMDB cache:', e.message);
+}
+
+// Function to save cache occasionally to prevent heavy I/O
+let cacheSaveTimeout = null;
+function saveTmdbCache() {
+  if (cacheSaveTimeout) clearTimeout(cacheSaveTimeout);
+  cacheSaveTimeout = setTimeout(() => {
+    fs.writeFile(TMDB_CACHE_FILE, JSON.stringify(tmdbCache, null, 2), (err) => {
+      if (err) console.error('Error saving TMDB cache:', err);
+    });
+  }, 5000); // Debounce saves by 5 seconds
+}
+
+// Function to fetch or retrieve from TMDB cache
+async function fetchTmdbCache(tmdbPath, queryParams, api_key) {
+  const queryArray = Object.entries(queryParams).map(([k, v]) => `${k}=${encodeURIComponent(v)}`);
+  const queryString = queryArray.length > 0 ? `?${queryArray.join('&')}` : '';
+  const cacheKey = `${tmdbPath}${queryString}`;
+
+  if (tmdbCache[cacheKey]) {
+    const cachedData = tmdbCache[cacheKey];
+    if (cachedData.timestamp && (Date.now() - cachedData.timestamp < 1000 * 60 * 60 * 24 * 7)) {
+      console.log(`[TMDB Cache Hit] ${cacheKey}`);
+      return cachedData.data;
+    }
+  }
+
+  console.log(`[TMDB Cache Miss] Fetching ${cacheKey}`);
+  const tmdbRes = await axios.get(`https://api.themoviedb.org/3/${tmdbPath}`, {
+    params: {
+      ...queryParams,
+      api_key,
+      language: queryParams.language || 'en-US'
+    }
+  });
+
+  tmdbCache[cacheKey] = {
+    timestamp: Date.now(),
+    data: tmdbRes.data
+  };
+  saveTmdbCache();
+  return tmdbRes.data;
+}
+
+app.get(/^\/api\/tmdb\/(.*)/, async (req, res) => {
+  const tmdbPath = req.params[0];
+  const api_key = process.env.VITE_TMDB_API_KEY;
+  if (!api_key) return res.status(503).json({ error: 'VITE_TMDB_API_KEY missing in server .env' });
+
+  try {
+    const data = await fetchTmdbCache(tmdbPath, req.query, api_key);
+    res.json(data);
+  } catch (err) {
+    console.error(`TMDB Error for ${tmdbPath}:`, err.message);
+    res.status(err.response?.status || 500).json(err.response?.data || { error: 'TMDB Request Failed' });
+  }
+});
+
+function extractYear(name) {
+  const match = name.match(/\((\d{4})\)/);
+  return match ? parseInt(match[1]) : null;
+}
+
+function cleanName(name) {
+  return name.replace(/\(\d{4}\)/, '').replace(/[\._\-]/g, ' ').trim();
+}
+
+function pickBestResult(results, year, dateField = 'first_air_date') {
+  if (!results || results.length === 0) return null;
+  if (!year) return results[0];
+  const match = results.find((r) => {
+    const d = r[dateField] || r.release_date || r.first_air_date || '';
+    return d.startsWith(String(year));
+  });
+  return match || results[0];
+}
+
+app.get('/api/library/metadata', async (req, res) => {
+  const api_key = process.env.VITE_TMDB_API_KEY;
+  if (!api_key) return res.status(503).json({ error: 'VITE_TMDB_API_KEY missing' });
+
+  try {
+    const movies = listVideoFilesMulti(MOVIES_DIRS);
+    const tvShows = listTvShows();
+
+    // Deduplicate TV shows by name
+    const uniqueTv = [];
+    const seenTv = new Set();
+    for (const s of tvShows) {
+      if (!seenTv.has(s.name)) {
+        seenTv.add(s.name);
+        uniqueTv.push(s);
+      }
+    }
+
+    // Match Movies
+    const movieResults = [];
+    for (const m of movies) {
+      const year = extractYear(m.name);
+      try {
+        const searchRes = await fetchTmdbCache('search/movie', { query: cleanName(m.name) }, api_key);
+        const best = pickBestResult(searchRes.results, year, 'release_date');
+        if (best) movieResults.push({ ...best, localFilename: m.filename });
+      } catch (e) { /* skip */ }
+    }
+
+    // Deduplicate matched movies
+    const seenMovies = new Set();
+    const finalMovies = movieResults.filter(m => {
+      if (seenMovies.has(m.id)) return false;
+      seenMovies.add(m.id);
+      return true;
+    });
+
+    // Match TV Shows
+    const tvResults = [];
+    for (const s of uniqueTv) {
+      const year = extractYear(s.name);
+      try {
+        const searchRes = await fetchTmdbCache('search/tv', { query: cleanName(s.name) }, api_key);
+        const best = pickBestResult(searchRes.results, year, 'first_air_date');
+        if (best) tvResults.push({ ...best, localName: s.name });
+      } catch (e) { /* skip */ }
+    }
+
+    // Compute Badges
+    const today = new Date().toISOString().split('T')[0];
+    const badges = {};
+    for (const show of tvResults) {
+      try {
+        const details = await fetchTmdbCache(`tv/${show.id}`, {}, api_key);
+        const nextEp = details.next_episode_to_air;
+        const lastEp = details.last_episode_to_air;
+        if (nextEp && nextEp.air_date > today) {
+          badges[show.id] = { type: 'coming-soon', date: nextEp.air_date };
+        } else if (details.status === 'Returning Series' && lastEp && lastEp.air_date) {
+          const daysSinceLast = (Date.now() - new Date(lastEp.air_date).getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSinceLast < 14) badges[show.id] = { type: 'new-episodes' };
+        }
+        if (nextEp && nextEp.air_date <= today) badges[show.id] = { type: 'new-episodes' };
+      } catch (e) { /* skip */ }
+    }
+
+    res.json({ movies: finalMovies, tvShows: tvResults, tvBadges: badges });
+  } catch (err) {
+    console.error('Metadata endpoint error:', err);
+    res.status(500).json({ error: 'Failed to generate metadata' });
   }
 });
 
