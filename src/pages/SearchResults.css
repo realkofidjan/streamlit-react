@@ -1,6 +1,6 @@
 /* ===== Netflix Search Results ===== */
 .search-results-page {
-  padding-top: 1rem;
+  padding-top: 7rem !important;
   padding-bottom: 4rem;
   min-height: 80vh;
 }
@@ -142,7 +142,7 @@
 
 @media (max-width: 480px) {
   .search-results-page {
-    padding-top: 1rem;
+    padding-top: 6rem !important;
   }
 
   .search-results-header {
