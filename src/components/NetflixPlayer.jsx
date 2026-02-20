@@ -40,6 +40,11 @@ function NetflixPlayer({
   // Paused info overlay
   const [showPausedOverlay, setShowPausedOverlay] = useState(false);
 
+  // Splash Screen Intro (Only on pristine plays)
+  const isPristineStart = !startTime || startTime === 0;
+  const [showSplash, setShowSplash] = useState(isPristineStart);
+  const [minSplashTimePassed, setMinSplashTimePassed] = useState(false);
+
   // Update src when prop changes
   useEffect(() => {
     setVideoSrc(src);
@@ -63,6 +68,31 @@ function NetflixPlayer({
       }
     }
   }, [videoSrc]);
+
+  // Splash screen impact sound and timer logic
+  useEffect(() => {
+    if (isPristineStart && showSplash) {
+      // Minimum 2.5 seconds to show the logo and play sound
+      const splashTimer = setTimeout(() => {
+        setMinSplashTimePassed(true);
+      }, 2500);
+
+      const impactSound = new Audio('/splash-impact.mp3');
+      impactSound.volume = 0.5;
+      impactSound.play().catch(e => console.log('Audio autoplay blocked', e));
+
+      return () => clearTimeout(splashTimer);
+    } else {
+      setMinSplashTimePassed(true);
+    }
+  }, [isPristineStart]);
+
+  // Dismount splash when minimum time is up AND the video has buffered successfully
+  useEffect(() => {
+    if (showSplash && minSplashTimePassed && !buffering) {
+      setShowSplash(false);
+    }
+  }, [minSplashTimePassed, buffering, showSplash]);
 
   const showControlsTemporarily = useCallback(() => {
     setShowControls(true);
@@ -408,11 +438,32 @@ function NetflixPlayer({
 
       </video>
 
+      {/* ===== PRE-ROLL SPLASH OVERLAY ===== */}
+      <AnimatePresence>
+        {showSplash && (
+          <motion.div
+            className="nfp-splash-overlay"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: "easeInOut" }}
+          >
+            <motion.img
+              src="/logo.png"
+              alt="StreamLit Original"
+              className="nfp-splash-logo"
+              initial={{ scale: 0.7, opacity: 0 }}
+              animate={{ scale: 1.1, opacity: 1 }}
+              transition={{ duration: 2, ease: "easeOut" }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="nfp-video-area" />
 
-      {/* Buffering spinner */}
+      {/* Buffering spinner - only show if splash is gone */}
       {
-        buffering && (
+        buffering && !showSplash && (
           <div className="nfp-buffering">
             <div className="nfp-buffering-spinner" />
           </div>

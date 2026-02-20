@@ -21,6 +21,24 @@
   inset: 50px 0 60px 0;
 }
 
+/* ===== PRE-ROLL SPLASH ===== */
+.nfp-splash-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 9000;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nfp-splash-logo {
+  max-width: 250px;
+  max-height: 250px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 40px rgba(229, 9, 20, 0.5));
+}
+
 /* ===== Buffering ===== */
 .nfp-buffering {
   position: absolute;
