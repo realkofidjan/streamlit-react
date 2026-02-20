@@ -60,7 +60,7 @@ function ContentModal({ content, onClose, show }) {
     });
 
     // 3. Check Local Movie (Parallel!)
-    const { data: localMovieFiles = [] } = useQuery({
+    const { data: localMovieFiles = [], isLoading: localMovieLoading } = useQuery({
         queryKey: ['localSearch', 'movie', itemTitle],
         queryFn: () => searchLocalMovies(itemTitle).then(r => r.data || []),
         enabled: !!itemTitle && itemType === 'movie',
@@ -77,14 +77,14 @@ function ContentModal({ content, onClose, show }) {
         staleTime: 1000 * 60 * 30,
     });
 
-    // 5. Check Local Episodes (TV)
-    const { data: localTvData = { set: new Set(), filenames: {} } } = useQuery({
-        queryKey: ['localEpisodes', itemTitle, selectedSeason],
+    // 5. Check Local Episodes (TV) - ALL Seasons
+    const { data: localTvData = { list: [], filenames: {} }, isLoading: localTvLoading } = useQuery({
+        queryKey: ['localEpisodes', itemTitle], // Removed selectedSeason so we cache the whole show
         queryFn: async () => {
             const res = await searchLocalTvShows(itemTitle);
-            if (res.data.length === 0) return { set: new Set(), filenames: {} };
+            if (res.data.length === 0) return { list: [], filenames: {} };
 
-            const localEpNums = new Set();
+            const allEpKeys = new Set();
             const filenames = {};
 
             for (const match of res.data) {
@@ -95,25 +95,25 @@ function ContentModal({ content, onClose, show }) {
                         const sm = ep.filename.match(/[Ss](\d+)/);
                         const em = ep.filename.match(/[Ee](\d+)/);
                         if (!sm || !em) continue;
-                        if (parseInt(sm[1]) === selectedSeason) {
-                            const epNum = parseInt(em[1]);
-                            localEpNums.add(epNum);
-                            filenames[epNum] = ep.filename;
-                        }
+                        const sNum = parseInt(sm[1]);
+                        const eNum = parseInt(em[1]);
+                        const key = `S${sNum}E${eNum}`;
+                        allEpKeys.add(key);
+                        filenames[key] = ep.filename;
                     }
                 }
             }
-            return { set: localEpNums, filenames };
+            return { list: Array.from(allEpKeys), filenames };
         },
         enabled: itemType === 'tv' && !!itemTitle,
         staleTime: 1000 * 60 * 5,
     });
 
-    const localEpisodeSet = localTvData.set;
-    const localEpisodeFilenames = localTvData.filenames;
+    const localEpisodeList = localTvData.list || [];
+    const localEpisodeFilenames = localTvData.filenames || {};
 
     // Derived loading state
-    const loading = detailsLoading;
+    const loading = detailsLoading || localMovieLoading || localTvLoading;
 
     // Body scroll lock
     useEffect(() => {
@@ -129,18 +129,9 @@ function ContentModal({ content, onClose, show }) {
 
 
     // Handle season change
-    const handleSeasonChange = async (seasonNum) => {
+    const handleSeasonChange = (seasonNum) => {
         setSelectedSeason(seasonNum);
         setShowSeasonDropdown(false);
-        if (details) {
-            try {
-                const res = await getTvSeasonDetails(details.id, seasonNum);
-                setSeasonDetails(res.data);
-                checkLocalEpisodes(details, seasonNum, false);
-            } catch (e) {
-                console.error("Failed to fetch season", e);
-            }
-        }
     };
 
     // Navigate to a similar item (open it in this same modal)
@@ -414,7 +405,9 @@ function ContentModal({ content, onClose, show }) {
     const handlePlayMovie = (startTime = 0) => {
         if (isLocalMovie) {
             onClose();
-            navigate(`/play?type=movie&id=${item.id}${startTime > 0 ? `&t=${startTime}` : ''}`);
+            navigate(`/play?type=movie&id=${item.id}${startTime > 0 ? `&t=${startTime}` : ''}`, {
+                state: { localFilename }
+            });
         } else {
             // Updated to vidlink.pro - verified 200 OK response
             setStreamUrl(`https://vidlink.pro/movie/${item.id}`);
@@ -423,10 +416,14 @@ function ContentModal({ content, onClose, show }) {
 
     // Play episode — local goes to /play, non-local opens stream
     const handleEpisodePlay = (seasonNum, episodeNum, startTime = 0) => {
-        const hasLocal = localEpisodeSet.has(episodeNum);
+        const key = `S${seasonNum}E${episodeNum}`;
+        const hasLocal = localEpisodeList.includes(key);
         if (hasLocal) {
             onClose();
-            navigate(`/play?type=episode&id=${item.id}&season=${seasonNum}&episode=${episodeNum}${startTime > 0 ? `&t=${startTime}` : ''}`);
+            const filename = localEpisodeFilenames[key];
+            navigate(`/play?type=episode&id=${item.id}&season=${seasonNum}&episode=${episodeNum}${startTime > 0 ? `&t=${startTime}` : ''}`, {
+                state: { localFilename: filename }
+            });
         } else {
             // Updated to vidlink.pro
             setStreamUrl(`https://vidlink.pro/tv/${item.id}/${seasonNum}/${episodeNum}`);
@@ -543,7 +540,7 @@ function ContentModal({ content, onClose, show }) {
                                         {resumeInfo && !isMovie
                                             ? (resumeInfo.isResume ? `Resume S${resumeInfo.season}:E${resumeInfo.episode}` : `Play S${resumeInfo.season}:E${resumeInfo.episode}`)
                                             : (seasonDetails?.episodes?.[0]
-                                                ? `${localEpisodeSet.has(seasonDetails.episodes[0].episode_number) ? 'Play' : 'Stream'} S${selectedSeason}E${seasonDetails.episodes[0].episode_number}`
+                                                ? `${localEpisodeList.includes(`S${selectedSeason}E${seasonDetails.episodes[0].episode_number}`) ? 'Play' : 'Stream'} S${selectedSeason}E${seasonDetails.episodes[0].episode_number}`
                                                 : 'Play')
                                         }
                                     </button>
@@ -672,7 +669,7 @@ function ContentModal({ content, onClose, show }) {
                                         {seasonDetails && seasonDetails.episodes && (
                                             <div className="modal-ep-grid">
                                                 {seasonDetails.episodes.map(ep => {
-                                                    const hasLocal = localEpisodeSet.has(ep.episode_number);
+                                                    const hasLocal = localEpisodeList.includes(`S${selectedSeason}E${ep.episode_number}`);
                                                     const epKey = `${item.id}-s${selectedSeason}e${ep.episode_number}`;
                                                     const epProgress = currentUser?.watchHistory?.episodes?.[epKey];
                                                     const resumeTime = (epProgress && epProgress.currentTime > 0 && epProgress.progress < 0.97) ? epProgress.currentTime : 0;

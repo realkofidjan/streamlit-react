@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { getMovieDetails, getTvShowDetails, getTvSeasonDetails, getImageUrl } from '../services/tmdb';
 import {
     searchLocalMovies, getLocalMovieStreamUrl,
@@ -16,11 +16,14 @@ function Player() {
     const navigate = useNavigate();
     const { currentUser, updateWatchHistory } = useUser();
 
+    const location = useLocation();
+
     const type = params.get('type');           // 'movie' or 'episode'
     const tmdbId = params.get('id');           // TMDB movie or show ID
     const season = params.get('season');       // For episodes
     const episode = params.get('episode');     // For episodes
     const startTimeParam = params.get('t');    // Start time in seconds
+    const passedLocalFilename = location.state?.localFilename;
 
     const [streamUrl, setStreamUrl] = useState(null);
     const [title, setTitle] = useState('');
@@ -63,17 +66,34 @@ function Player() {
         }
 
         const load = async () => {
-            setLoading(true);
             setError(null);
+
+            // If the route provided the exact chunk mapping, start video instantly!
+            if (passedLocalFilename) {
+                setLocalFilename(passedLocalFilename);
+                if (type === 'movie') {
+                    setStreamUrl(getLocalMovieStreamUrl(passedLocalFilename));
+                } else {
+                    // Reconstructing the folder mapping is tricky without the backend,
+                    // but `Player` had an old `getLocalTvStreamUrl` which needs name and folder.
+                    // Actually, the new metadata endpoint should ideally pass the full URL,
+                    // but since `localFilename` uniquely identifies it on the backend, we can just use the direct fetch.
+                    // However, we still need `name` and `folderName`. So for episodes, it's safest to just let the TMDB 
+                    // mapper run *or* change `ContentModal` to pass the full local stream URL.
+                }
+            } else {
+                setLoading(true);
+            }
+
             try {
                 if (type === 'movie') {
-                    await loadMovie();
+                    await loadMovie(!!passedLocalFilename);
                 } else if (type === 'episode') {
-                    await loadEpisode();
+                    await loadEpisode(!!passedLocalFilename);
                 }
             } catch (err) {
                 console.error('Player load error:', err);
-                setError('Failed to load media');
+                if (!passedLocalFilename) setError('Failed to load media');
             } finally {
                 setLoading(false);
             }
@@ -105,7 +125,7 @@ function Player() {
 
     // ... (existing load logic)
 
-    const loadMovie = async () => {
+    const loadMovie = async (hasDirectUrl) => {
         // ... (existing movie loading)
         const res = await getMovieDetails(tmdbId);
         const movie = res.data;
@@ -116,6 +136,8 @@ function Player() {
             movieTitle: movie.title,
             overview: movie.overview,
         });
+
+        if (hasDirectUrl) return; // Skip heavy local mapping
 
         // Find local file
         const localRes = await searchLocalMovies(movie.title);
@@ -132,7 +154,7 @@ function Player() {
 
     };
 
-    const loadEpisode = async () => {
+    const loadEpisode = async (hasDirectUrl) => {
         // ... (existing episode loading)
         const showRes = await getTvShowDetails(tmdbId);
         const show = showRes.data;
@@ -163,7 +185,7 @@ function Player() {
         // Find local files and build episode data
         const localRes = await searchLocalTvShows(show.name);
         if (localRes.data.length === 0) {
-            setError('Show not found on local server');
+            if (!hasDirectUrl) setError('Show not found on local server');
             return;
         }
 
@@ -276,7 +298,7 @@ function Player() {
 
         if (foundUrl) {
             setStreamUrl(foundUrl);
-        } else {
+        } else if (!hasDirectUrl) {
             setError('Episode not found on local server');
         }
     };

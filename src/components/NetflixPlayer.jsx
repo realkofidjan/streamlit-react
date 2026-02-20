@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play, Pause, X, Maximize, Minimize, Volume2, Volume1, VolumeX,
   List, ChevronDown, ChevronLeft, SkipForward as NextIcon,
-  Flag, MonitorSpeaker, ArrowLeft, RotateCcw, RotateCw
+  Flag, MonitorSpeaker, ArrowLeft, RotateCcw, RotateCw, PictureInPicture
 } from 'lucide-react';
 import './NetflixPlayer.css';
 
@@ -26,6 +26,7 @@ function NetflixPlayer({
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [isPip, setIsPip] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [buffering, setBuffering] = useState(true);
   const [showEpisodes, setShowEpisodes] = useState(false);
@@ -47,6 +48,21 @@ function NetflixPlayer({
     setNextCancelled(false);
     setShowPausedOverlay(false);
   }, [src]);
+
+  // Aggressive autoplay enforce
+  useEffect(() => {
+    if (videoSrc && videoRef.current) {
+      // Many browsers block autoplay unless muted, but if the user has already interacted
+      // with the domain, it works. We aggressively attempt `.play()`.
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Autoplay blocked by browser policy:', err);
+          setShowControls(true);
+        });
+      }
+    }
+  }, [videoSrc]);
 
   const showControlsTemporarily = useCallback(() => {
     setShowControls(true);
@@ -136,6 +152,9 @@ function NetflixPlayer({
           } else if (onClose) {
             onClose();
           }
+          break;
+        case 'p':
+          togglePiP();
           break;
         case 'n':
           if (onNextEpisode && nextEpisodeInfo) {
@@ -271,6 +290,23 @@ function NetflixPlayer({
     else document.exitFullscreen();
   };
 
+  const togglePiP = async () => {
+    const vid = videoRef.current;
+    if (!vid) return;
+
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+        setIsPip(false);
+      } else {
+        await vid.requestPictureInPicture();
+        setIsPip(true);
+      }
+    } catch (error) {
+      console.error('Failed to enter Picture-in-Picture mode:', error);
+    }
+  };
+
   const handleTimeUpdate = () => {
     const vid = videoRef.current;
     if (!vid) return;
@@ -327,7 +363,7 @@ function NetflixPlayer({
         showControlsTemporarily();
       }}
       onClick={(e) => {
-        if (showEpisodes || showNextOverlay || showSubtitleMenu) return;
+        if (showEpisodes || showNextOverlay) return;
         if (showPausedOverlay) {
           setShowPausedOverlay(false);
           setShowControls(true);
@@ -601,6 +637,11 @@ function NetflixPlayer({
                     <List size={22} />
                   </button>
                 )}
+
+                {/* Picture in Picture */}
+                <button className="nfp-ctrl-btn" onClick={togglePiP} title="Picture in Picture">
+                  <PictureInPicture size={20} />
+                </button>
 
                 {/* Fullscreen */}
                 <button className="nfp-ctrl-btn" onClick={toggleFullscreen}>
