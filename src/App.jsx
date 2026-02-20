@@ -12,6 +12,7 @@ import AllMovies from './pages/AllMovies';
 import AllTvShows from './pages/AllTvShows';
 import Player from './pages/Player';
 import Settings from './pages/Settings';
+import SplashScreen from './components/SplashScreen';
 
 import './App.css';
 
@@ -69,9 +70,14 @@ import { useInactivity } from './hooks/useInactivity';
 
 function AppRoutes() {
   const { currentUser } = useUser();
+  const [showSplash, setShowSplash] = useState(true);
 
   // Enable inactivity timer
   useInactivity();
+
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
+  }
 
   return (
     <>

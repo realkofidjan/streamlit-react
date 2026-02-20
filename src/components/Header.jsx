@@ -185,8 +185,7 @@ function Header() {
           ) : (
             <>
               <Link to="/" className="logo">
-                <FaFilm className="logo-icon" />
-                <span>StreamIt</span>
+                <img src="/logo.png" alt="Kofi Stream Logo" className="header-logo-img" style={{ height: '32px', objectFit: 'contain' }} />
               </Link>
               <nav className="nav-links-left nav-desktop">
                 <Link to="/">Home</Link>
