@@ -9,8 +9,7 @@ function Footer() {
         <div className="footer-top">
           <div className="footer-brand">
             <Link to="/" className="footer-logo">
-              <FaFilm className="footer-logo-icon" />
-              <span>StreamIt</span>
+              <img src="/logo.png" alt="StreamLit Logo" className="footer-logo-img" style={{ height: '32px', objectFit: 'contain', marginRight: '8px' }} />
             </Link>
             <p className="footer-desc">
               Your ultimate destination for movies and TV shows. Discover, explore, and enjoy endless entertainment.
@@ -22,12 +21,6 @@ function Footer() {
             <Link to="/search?type=movie">Movies</Link>
             <Link to="/search?type=tv">TV Shows</Link>
           </div>
-          <div className="footer-links">
-            <h4>Legal</h4>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Use</a>
-            <a href="#">FAQ</a>
-          </div>
           <div className="footer-social">
             <h4>Follow Us</h4>
             <div className="social-icons">
@@ -38,7 +31,7 @@ function Footer() {
           </div>
         </div>
         <div className="footer-bottom">
-          <p>&copy; {new Date().getFullYear()} StreamIt. All rights reserved. Powered by TMDB.</p>
+          <p>&copy; {new Date().getFullYear()} StreamLit. Hobby Project. Powered by TMDB.</p>
         </div>
       </div>
     </footer>
