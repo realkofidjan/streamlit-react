@@ -624,8 +624,9 @@
     height: 100%;
     border: none;
 }
+
 /* Download Button Styling */
-.modal-icon-btn.downloading, 
+.modal-icon-btn.downloading,
 .ep-download-btn.downloading {
     color: #46d369 !important;
     border-color: #46d369 !important;
@@ -633,12 +634,83 @@
 }
 
 @keyframes pulse-green {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(70, 211, 105, 0.4); }
-    70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(70, 211, 105, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(70, 211, 105, 0); }
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(70, 211, 105, 0.4);
+    }
+
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(70, 211, 105, 0);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(70, 211, 105, 0);
+    }
 }
 
 .modal-icon-btn-download {
     color: #4682ff !important;
     border-color: #4682ff !important;
+}
+
+/* --- TV Navigation & Focus Styles --- */
+
+/* 1. Strong Focus Indicators for ALL interactive elements */
+button:focus,
+.modal-ep-row:focus,
+.modal-rec-card:focus,
+.season-select-btn:focus,
+.season-option:focus,
+.content-modal-close:focus,
+.content-modal-back:focus {
+    outline: 4px solid #fff;
+    outline-offset: 2px;
+    transform: scale(1.02);
+    z-index: 50;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+}
+
+/* Specific adjustments for specific buttons to avoid layout shifts */
+.ep-play-btn:focus,
+.ep-download-btn:focus,
+.ep-stream-btn:focus {
+    transform: scale(1.2);
+}
+
+/* 2. Modal Sizing for TV */
+/* Restrict max width/height further to avoid edge-cutoff on some TVs */
+.content-modal {
+    width: 90%;
+    max-width: 1000px;
+    /* Slightly wider but constrained */
+    max-height: 85vh;
+    /* Leave margin for overscan */
+    margin: 2rem auto;
+    /* Vertical centering helper */
+}
+
+/* 3. Scrollbar Styling (Make it visible but sleek) */
+.content-modal::-webkit-scrollbar {
+    width: 10px;
+}
+
+.content-modal::-webkit-scrollbar-track {
+    background: #181818;
+}
+
+.content-modal::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 5px;
+}
+
+.content-modal::-webkit-scrollbar-thumb:hover {
+    background: #666;
+}
+
+/* Ensure episode rows have pointer cursors and look clickable */
+.modal-ep-row {
+    cursor: pointer;
+    user-select: none;
 }

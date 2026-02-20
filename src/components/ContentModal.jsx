@@ -678,10 +678,34 @@ function ContentModal({ content, onClose, show }) {
                                                     const resumeTime = (epProgress && epProgress.currentTime > 0 && epProgress.progress < 0.97) ? epProgress.currentTime : 0;
 
                                                     return (
-                                                        <div
+                                                        <button
                                                             key={ep.id}
-                                                            className="modal-ep-row"
-                                                            onClick={() => handleEpisodePlay(selectedSeason, ep.episode_number, resumeTime)}
+                                                            className={`modal-ep-row ${hasLocal ? 'available' : 'unavailable'}`}
+                                                            onClick={(e) => {
+                                                                if (hasLocal) handleEpisodePlay(selectedSeason, ep.episode_number, resumeTime);
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    if (hasLocal) handleEpisodePlay(selectedSeason, ep.episode_number, resumeTime);
+                                                                }
+                                                            }}
+                                                            onFocus={(e) => {
+                                                                e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                            }}
+                                                            disabled={!hasLocal && !isNative} // Disable if no local file and not native (unless we wanna allow stream request)
+                                                            tabIndex="0"
+                                                            style={{
+                                                                textAlign: 'left',
+                                                                width: '100%',
+                                                                background: 'transparent',
+                                                                border: 'none',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '1rem',
+                                                                padding: '1rem',
+                                                                borderBottom: '1px solid #333',
+                                                                color: '#d2d2d2'
+                                                            }}
                                                         >
                                                             <span className="modal-ep-num">{ep.episode_number}</span>
                                                             <div className="modal-ep-thumb-wrapper">
@@ -706,11 +730,15 @@ function ContentModal({ content, onClose, show }) {
                                                             {hasLocal ? (
                                                                 <div className="ep-action-btns">
                                                                     {isNative && (
-                                                                        <button
+                                                                        <div
                                                                             className={`ep-download-btn ${isDownloading[epKey] ? 'downloading' : ''}`}
-                                                                            onClick={(e) => handleDownload(e, ep, 'episode')}
+                                                                            onClick={(e) => { e.stopPropagation(); handleDownload(e, ep, 'episode'); }}
+                                                                            onKeyDown={(e) => {
+                                                                                if (e.key === 'Enter') { e.stopPropagation(); handleDownload(e, ep, 'episode'); }
+                                                                            }}
+                                                                            tabIndex="0"
                                                                             title="Download Episode"
-                                                                            disabled={isDownloading[epKey]}
+                                                                            role="button"
                                                                             style={{ position: 'relative', width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                                                         >
                                                                             {isDownloading[epKey] ? (
@@ -737,40 +765,48 @@ function ContentModal({ content, onClose, show }) {
                                                                                             style={{ transition: 'stroke-dashoffset 0.3s ease' }}
                                                                                         />
                                                                                     </svg>
-                                                                                    {/* Optional: Tiny text for percentage, might be too small for list items */}
                                                                                 </div>
                                                                             ) : (
                                                                                 <FaDownload />
                                                                             )}
-                                                                        </button>
+                                                                        </div>
                                                                     )}
-                                                                    <button
+                                                                    <div
                                                                         className="ep-play-btn"
                                                                         onClick={(e) => { e.stopPropagation(); handleEpisodePlay(selectedSeason, ep.episode_number, resumeTime); }}
+                                                                        onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); handleEpisodePlay(selectedSeason, ep.episode_number, resumeTime); } }}
+                                                                        tabIndex="0"
+                                                                        role="button"
                                                                         title={resumeTime > 0 ? "Resume" : "Play"}
                                                                     >
                                                                         {resumeTime > 0 ? <FaPlay style={{ fontSize: '0.8rem' }} /> : <FaPlay />}
-                                                                    </button>
+                                                                    </div>
                                                                 </div>
                                                             ) : (
                                                                 <div className="ep-action-btns">
-                                                                    <button
+                                                                    <div
                                                                         className="ep-download-btn"
-                                                                        onClick={(e) => requestEpisodeDownload(e, selectedSeason, ep.episode_number, ep.name)}
+                                                                        onClick={(e) => { e.stopPropagation(); requestEpisodeDownload(e, selectedSeason, ep.episode_number, ep.name); }}
+                                                                        onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); requestEpisodeDownload(e, selectedSeason, ep.episode_number, ep.name); } }}
+                                                                        tabIndex="0"
+                                                                        role="button"
                                                                         title="Request Download"
                                                                     >
                                                                         <FaDownload />
-                                                                    </button>
-                                                                    <button
+                                                                    </div>
+                                                                    <div
                                                                         className="ep-stream-btn"
                                                                         onClick={(e) => { e.stopPropagation(); handleEpisodePlay(selectedSeason, ep.episode_number, resumeTime); }}
+                                                                        onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); handleEpisodePlay(selectedSeason, ep.episode_number, resumeTime); } }}
+                                                                        tabIndex="0"
+                                                                        role="button"
                                                                         title="Stream"
                                                                     >
                                                                         <FaPlay />
-                                                                    </button>
+                                                                    </div>
                                                                 </div>
                                                             )}
-                                                        </div>
+                                                        </button>
                                                     );
                                                 })}
                                             </div>
