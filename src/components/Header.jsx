@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FaFilm, FaCog, FaSignOutAlt, FaBell, FaTimes, FaBars, FaHome, FaVideo, FaTv, FaSearch, FaArrowLeft, FaUser } from 'react-icons/fa';
+import { Capacitor } from '@capacitor/core';
 import { useUser } from '../contexts/UserContext';
 import { searchMovies, searchTvShows, getImageUrl } from '../services/tmdb';
 import './Header.css';
@@ -23,6 +24,8 @@ function Header() {
   const searchTimerRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const isNative = Capacitor.isNativePlatform();
 
   // Show back button on non-home pages
   const isHome = location.pathname === '/';
@@ -197,67 +200,82 @@ function Header() {
 
           {/* Centered Search */}
           <div className={`header-search-wrapper ${mobileSearchActive ? 'mobile-active' : ''}`} ref={searchRef}>
-            <button
-              className="mobile-search-toggle"
-              onClick={() => {
-                setMobileSearchActive(true);
-                setTimeout(() => searchInputRef.current?.focus(), 50);
-              }}
-              aria-label="Open search"
-            >
-              <FaSearch />
-            </button>
-            <div className={`header-search-bar ${searchFocused ? 'focused' : ''}`}>
-              <FaSearch className="header-search-icon" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                className="header-search-input"
-                placeholder="Search titles..."
-                value={searchQuery}
-                onChange={handleSearchInput}
-                onFocus={() => setSearchFocused(true)}
-                onKeyDown={handleSearchKeyDown}
-              />
+            {isNative ? (
+              // Native App (APK/TV): Static search button to avoid keyboard/D-Pad focus issues
               <button
-                className="mobile-search-close"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMobileSearchActive(false);
-                  setSearchQuery('');
-                  setSearchResults([]);
-                  setSearchFocused(false);
-                }}
-                aria-label="Close search"
+                className="mobile-search-toggle native-search-btn"
+                onClick={() => navigate('/search')}
+                aria-label="Go to Search Page"
+                style={{ background: 'rgba(0,0,0,0.5)', padding: '10px 14px', borderRadius: '4px', fontSize: '1.2rem', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
               >
-                <FaTimes />
+                <FaSearch />
               </button>
-            </div>
-            {searchFocused && searchResults.length > 0 && (
-              <div className="header-search-dropdown">
-                {searchResults.map((r) => (
+            ) : (
+              // Web Browser: Standard expanding live-search bar
+              <>
+                <button
+                  className="mobile-search-toggle"
+                  onClick={() => {
+                    setMobileSearchActive(true);
+                    setTimeout(() => searchInputRef.current?.focus(), 50);
+                  }}
+                  aria-label="Open search"
+                >
+                  <FaSearch />
+                </button>
+                <div className={`header-search-bar ${searchFocused ? 'focused' : ''}`}>
+                  <FaSearch className="header-search-icon" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    className="header-search-input"
+                    placeholder="Search titles..."
+                    value={searchQuery}
+                    onChange={handleSearchInput}
+                    onFocus={() => setSearchFocused(true)}
+                    onKeyDown={handleSearchKeyDown}
+                  />
                   <button
-                    key={`${r.type}-${r.id}`}
-                    className="header-search-result"
-                    onClick={() => goToResult(r)}
+                    className="mobile-search-close"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMobileSearchActive(false);
+                      setSearchQuery('');
+                      setSearchResults([]);
+                      setSearchFocused(false);
+                    }}
+                    aria-label="Close search"
                   >
-                    <div className="search-result-poster">
-                      {r.poster_path ? (
-                        <img src={getImageUrl(r.poster_path, 'w92')} alt="" />
-                      ) : (
-                        <div className="search-result-no-img" />
-                      )}
-                    </div>
-                    <div className="search-result-info">
-                      <span className="search-result-title">{r.title}</span>
-                      <span className="search-result-meta">
-                        {r.type === 'movie' ? 'Movie' : 'TV Show'}
-                        {r.year && ` · ${r.year}`}
-                      </span>
-                    </div>
+                    <FaTimes />
                   </button>
-                ))}
-              </div>
+                </div>
+                {searchFocused && searchResults.length > 0 && (
+                  <div className="header-search-dropdown">
+                    {searchResults.map((r) => (
+                      <button
+                        key={`${r.type}-${r.id}`}
+                        className="header-search-result"
+                        onClick={() => goToResult(r)}
+                      >
+                        <div className="search-result-poster">
+                          {r.poster_path ? (
+                            <img src={getImageUrl(r.poster_path, 'w92')} alt="" />
+                          ) : (
+                            <div className="search-result-no-img" />
+                          )}
+                        </div>
+                        <div className="search-result-info">
+                          <span className="search-result-title">{r.title}</span>
+                          <span className="search-result-meta">
+                            {r.type === 'movie' ? 'Movie' : 'TV Show'}
+                            {r.year && ` · ${r.year}`}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
 

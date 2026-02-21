@@ -8,10 +8,18 @@ function BackdropCard({ item, type, badge, onClick }) {
     const backdropUrl = backdropPath ? getImageUrl(backdropPath, 'w780') : null;
     const title = item.title || item.name;
 
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' || e.code === 'Space') {
+            e.preventDefault();
+            if (onClick) onClick(item);
+        }
+    };
+
     return (
         <div
             className="nf-backdrop-card"
             onClick={() => onClick && onClick(item)}
+            onKeyDown={handleKeyDown}
             role="button"
             tabIndex={0}
             style={{ width: '100%', height: '100%' }}

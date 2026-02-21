@@ -518,7 +518,7 @@ function ContentModal({ content, onClose, show }) {
                             <div className="content-modal-controls">
                                 {/* Play button — always visible */}
                                 {isMovie && (
-                                    <button className="modal-play-btn" onClick={() => handlePlayMovie(resumeInfo?.time || 0)}>
+                                    <button className="modal-play-btn" onClick={() => handlePlayMovie(resumeInfo?.time || 0)} autoFocus>
                                         {/* Simplified Play button text logic to avoid 'undefined' bugs */}
                                         <FaPlay /> {resumeInfo ? 'Resume' : (isLocalMovie ? 'Play' : 'Stream')}
                                     </button>
@@ -527,6 +527,7 @@ function ContentModal({ content, onClose, show }) {
                                 {!isMovie && (
                                     <button
                                         className="modal-play-btn"
+                                        autoFocus
                                         onClick={() => {
                                             if (resumeInfo && !isMovie) {
                                                 handleEpisodePlay(resumeInfo.season, resumeInfo.episode, resumeInfo.time);

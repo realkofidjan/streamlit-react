@@ -8,8 +8,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'StreamIt',
-        short_name: 'StreamIt',
+        name: 'StreamLit',
+        short_name: 'StreamLit',
         description: 'Stream movies and TV shows from your drive',
         theme_color: '#e50914',
         background_color: '#0a0a0a',

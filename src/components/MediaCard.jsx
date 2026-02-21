@@ -25,8 +25,15 @@ function MediaCard({ item, type, badge, onClick }) {
     if (onClick) onClick(item);
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.code === 'Space') {
+      e.preventDefault(); // Prevent default page jump on space
+      handleClick();
+    }
+  };
+
   return (
-    <div className="nf-card" onClick={handleClick} role="button" tabIndex={0}>
+    <div className="nf-card" onClick={handleClick} onKeyDown={handleKeyDown} role="button" tabIndex={0}>
       <div className="nf-card-img">
         {posterUrl ? (
           <img src={posterUrl} alt={title} loading="lazy" />
