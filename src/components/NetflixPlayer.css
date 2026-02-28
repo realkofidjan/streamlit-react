@@ -573,9 +573,200 @@ video::-webkit-media-text-track-display {
   -webkit-box-orient: vertical;
   overflow: hidden;
   height: 6em;
-  /* Fixed height: 1.5 line-height * 4 lines */
 }
 
 .nfp-episode-card.active .nfp-ep-title {
   color: #e50914;
+}
+
+/* ===== PAUSE OVERLAY ===== */
+.nfp-paused-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 10%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 2000;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.nfp-paused-info {
+  max-width: 600px;
+  color: white;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.nfp-paused-label {
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 1rem;
+  opacity: 0.8;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.nfp-paused-show {
+  font-size: 3.5rem;
+  margin: 0;
+  font-weight: 900;
+}
+
+.nfp-paused-season {
+  display: block;
+  font-size: 1.2rem;
+  margin-top: 5px;
+  opacity: 0.7;
+}
+
+.nfp-paused-ep {
+  font-size: 1.8rem;
+  margin: 10px 0;
+  font-weight: 700;
+}
+
+.nfp-paused-desc {
+  font-size: 1.1rem;
+  line-height: 1.5;
+  opacity: 0.9;
+  margin-top: 20px;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.nfp-paused-tag {
+  position: absolute;
+  bottom: 80px;
+  right: 80px;
+  font-size: 1.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  opacity: 0.5;
+}
+
+/* ===== MOBILE RESPONSIVENESS ===== */
+@media (max-width: 768px) {
+  .nfp-top-bar {
+    padding: 20px;
+  }
+
+  .nfp-top-title {
+    font-size: 1.2rem;
+    max-width: 200px;
+  }
+
+  .nfp-center-cluster {
+    gap: 40px;
+  }
+
+  .nfp-center-play-icon {
+    width: 60px;
+    height: 60px;
+  }
+
+  .nfp-center-skip-icon {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .nfp-skip-text {
+    font-size: 1rem !important;
+    margin-top: -38px !important;
+  }
+
+  .nfp-bottom-ui {
+    padding: 20px;
+  }
+
+  .nfp-action-item span {
+    display: none;
+  }
+
+  .nfp-action-item {
+    min-width: unset;
+    padding: 10px;
+  }
+
+  .nfp-action-bar {
+    gap: 15px;
+  }
+
+  .nfp-paused-overlay {
+    padding-left: 20px;
+  }
+
+  .nfp-paused-show {
+    font-size: 1.8rem;
+    margin-bottom: 5px;
+  }
+
+  .nfp-paused-ep {
+    font-size: 1.1rem;
+    margin: 5px 0;
+  }
+
+  .nfp-paused-desc {
+    font-size: 0.9rem;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+  }
+
+  .nfp-paused-tag {
+    bottom: 40px;
+    right: 40px;
+    font-size: 1rem;
+  }
+
+  /* Handle Portrait specific issues */
+  @media (orientation: portrait) {
+    .nfp-video {
+      object-fit: contain;
+    }
+
+    .nfp-top-title {
+      font-size: 1rem;
+      max-width: 150px;
+    }
+
+    .nfp-skip-intro-btn,
+    .nfp-intro-learning-wizard {
+      bottom: 120px;
+      right: 20px;
+    }
+  }
+
+  /* Handle Landscape specific issues */
+  @media (orientation: landscape) {
+    .nfp-top-bar {
+      padding: 10px 40px;
+    }
+
+    .nfp-bottom-ui {
+      padding: 10px 40px;
+    }
+
+    .nfp-skip-intro-btn,
+    .nfp-intro-learning-wizard {
+      bottom: 80px;
+      right: 40px;
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }

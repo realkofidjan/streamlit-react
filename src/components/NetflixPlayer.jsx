@@ -381,8 +381,21 @@ function NetflixPlayer({
   const toggleFullscreen = () => {
     const el = playerRef.current;
     if (!el) return;
-    if (!document.fullscreenElement) el.requestFullscreen();
-    else document.exitFullscreen();
+    if (!document.fullscreenElement) {
+      el.requestFullscreen().then(() => {
+        // Attempt to lock orientation to landscape on mobile
+        if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
+          window.screen.orientation.lock('landscape').catch(err => {
+            console.warn('Orientation lock failed:', err);
+          });
+        }
+      });
+    } else {
+      document.exitFullscreen();
+      if (window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+        window.screen.orientation.unlock();
+      }
+    }
   };
 
   const togglePiP = async () => {
@@ -491,6 +504,8 @@ function NetflixPlayer({
         key={videoSrc}
         className="nfp-video"
         src={videoSrc}
+        playsInline
+        webkit-playsinline="true"
         onTimeUpdate={handleTimeUpdate}
         onPause={() => setPlaying(false)}
         onPlay={() => setPlaying(true)}
@@ -623,10 +638,7 @@ function NetflixPlayer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => {
-              setShowPausedOverlay(false);
-              setShowControls(true);
-            }}
+            onClick={togglePlay}
           >
             <div className="nfp-paused-info">
               <span className="nfp-paused-label">You're watching</span>
