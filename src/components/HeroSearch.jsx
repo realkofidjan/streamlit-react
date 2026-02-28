@@ -67,13 +67,30 @@ function HeroBillboard({ item, type, onMoreInfo }) {
             <div className="billboard-actions">
               <button
                 className="billboard-btn billboard-btn-play"
+                autoFocus
                 onClick={handlePlay}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.code === 'Space') {
+                    handlePlay();
+                  } else if (e.key === 'ArrowDown') {
+                    // Help TV D-pad find the first row below the huge billboard
+                    document.querySelector('.nf-rows-container .nf-card, .nf-rows-container .nf-backdrop-card, .nf-rows-container .continue-card')?.focus();
+                  }
+                }}
               >
                 <FaPlay /> Play
               </button>
               <button
                 className="billboard-btn billboard-btn-info"
                 onClick={handleMoreInfo}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.code === 'Space') {
+                    handleMoreInfo();
+                  } else if (e.key === 'ArrowDown') {
+                    // Help TV D-pad find the first row below the huge billboard
+                    document.querySelector('.nf-rows-container .nf-card, .nf-rows-container .nf-backdrop-card, .nf-rows-container .continue-card')?.focus();
+                  }
+                }}
               >
                 <FaInfoCircle /> More Info
               </button>

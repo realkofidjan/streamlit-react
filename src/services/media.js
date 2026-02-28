@@ -49,3 +49,8 @@ export const getLocalTvStreamUrl = (showName, seasonName, filename) =>
 export const getLibrary = () => getApi().get('/api/library');
 
 export const getLibraryMetadata = () => getApi().get('/api/library/metadata');
+export const getEpisodeIntro = (imdbId, season, episode, tmdbId) =>
+  getApi().get('/api/intro', { params: { imdb_id: imdbId, season, episode, tmdb_id: tmdbId } });
+
+export const saveIntroOverride = (tmdbId, season, episode, endSec, startSec = 0) =>
+  getApi().post('/api/intro/overrides', { tmdb_id: tmdbId, season, episode, start_sec: startSec, end_sec: endSec });

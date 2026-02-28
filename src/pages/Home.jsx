@@ -12,8 +12,6 @@ import {
 } from '../services/media';
 import { searchMovies, searchTvShows, getTvShowDetails, getRecommendedMovies, getRecommendedTvShows, getTrendingDay, getImageUrl } from '../services/tmdb';
 import { cleanName, extractYear, pickBestResult } from '../utils/matchTmdb';
-import { isVideoOffline, getOfflineVideos, removeOfflineVideo, formatFileSize } from '../services/offlineStorage';
-import { searchSubtitles, fetchSubtitleUrl } from '../services/subtitles';
 import { FaChevronLeft, FaChevronRight, FaTimes } from 'react-icons/fa';
 import './Home.css';
 
@@ -75,7 +73,6 @@ import { useQuery } from '@tanstack/react-query';
 
 function Home() {
   const { currentUser, clearContinueWatching } = useUser();
-  const [offlineVideos, setOfflineVideos] = useState([]);
   const [selectedContent, setSelectedContent] = useState(null);
   const navigate = useNavigate();
 
@@ -83,10 +80,6 @@ function Home() {
     setSelectedContent({ ...item, type: type || item.media_type || 'movie' });
   };
   const closeModal = () => setSelectedContent(null);
-
-  useEffect(() => {
-    setOfflineVideos(getOfflineVideos());
-  }, []);
 
   // Fetch unified library metadata from the backend
   const { data: metaData, isLoading: metaLoading } = useQuery({
@@ -175,14 +168,6 @@ function Home() {
     });
   }
 
-  const handleRemoveOffline = (e, key) => {
-    e.stopPropagation();
-    if (window.confirm('Delete this download?')) {
-      removeOfflineVideo(key);
-      setOfflineVideos(getOfflineVideos());
-    }
-  };
-
   const continueWatchingRaw = [
     ...watchingMovies,
     ...watchingEpisodes,
@@ -256,34 +241,6 @@ function Home() {
           </NetflixRow>
         )}
 
-        {offlineVideos.length > 0 && (
-          <NetflixRow title="Downloads" count={offlineVideos.length}>
-            {offlineVideos.map((v) => (
-              <div key={v.key} className="offline-card-container">
-                <MediaCard
-                  item={{
-                    ...v,
-                    id: v.tmdbId || v.id,
-                    title: v.title,
-                    name: v.title,
-                    poster_path: v.posterPath
-                  }}
-                  type={v.type}
-                  onClick={() => {
-                    const url = v.type === 'movie'
-                      ? `/play?type=movie&id=${v.id || v.tmdbId}`
-                      : `/play?type=episode&id=${v.showId}&season=${v.season}&episode=${v.episode}`;
-                    navigate(url);
-                  }}
-                />
-                <button className="remove-offline-btn" onClick={(e) => handleRemoveOffline(e, v.key)} title="Delete Download">
-                  <FaTimes />
-                </button>
-              </div>
-            ))}
-          </NetflixRow>
-        )}
-
         {continueWatching.length > 0 && (
           <section className="nf-section">
             <div className="nf-section-header-row">
@@ -309,7 +266,17 @@ function Home() {
                   }
                   const isNextUp = item.status === 'next-up';
                   return (
-                    <Link key={item.mediaId} to={linkTo} className={`continue-card ${isNextUp ? 'next-up-card' : ''}`}>
+                    <Link
+                      key={item.mediaId}
+                      to={linkTo}
+                      className={`continue-card ${isNextUp ? 'next-up-card' : ''}`}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.code === 'Space') {
+                          e.preventDefault();
+                          navigate(linkTo);
+                        }
+                      }}
+                    >
                       {item.posterPath ? (
                         <img src={getImageUrl(item.posterPath, 'w300')} alt={item.title} />
                       ) : (
@@ -343,22 +310,6 @@ function Home() {
           <NetflixRow title="My List" count={watchlistItems.length}>
             {watchlistItems.map((item) => (
               <MediaCard key={`${item._type}-${item.id}`} item={item} type={parseInt(item._type) === item._type ? (item._type === 'movie' ? 'movie' : 'tv') : item._type} onClick={(i) => openModal(i, item._type)} />
-            ))}
-          </NetflixRow>
-        )}
-
-        {offlineVideos.length > 0 && (
-          <NetflixRow title="Downloaded" count={offlineVideos.length}>
-            {offlineVideos.map((v) => (
-              <Link key={v.key} to={v.linkTo} className="offline-card">
-                {v.posterPath ? (
-                  <img src={getImageUrl(v.posterPath, 'w300')} alt={v.title} />
-                ) : (
-                  <div className="offline-no-img">{v.title}</div>
-                )}
-                <span className="offline-card-title">{v.title}</span>
-                <span className="offline-card-size">{formatFileSize(v.size)}</span>
-              </Link>
             ))}
           </NetflixRow>
         )}

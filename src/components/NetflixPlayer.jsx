@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Play, Pause, X, Maximize, Minimize, Volume2, Volume1, VolumeX,
-  List, ChevronDown, ChevronLeft, SkipForward as NextIcon,
-  Flag, MonitorSpeaker, ArrowLeft, RotateCcw, RotateCw, PictureInPicture
+  Play, Pause, Maximize, Minimize, Volume2, Volume1, VolumeX,
+  List, ChevronDown, ChevronLeft, Forward as NextIcon,
+  Flag, MonitorSpeaker, ArrowLeft, RotateCcw, RotateCw, PictureInPicture,
+  Share, Check
 } from 'lucide-react';
+import { saveIntroOverride } from '../services/media';
 import './NetflixPlayer.css';
 
 function NetflixPlayer({
   src, title, onClose, onProgress, startTime, episodes,
-  onNextEpisode, nextEpisodeInfo, mediaInfo
+  onNextEpisode, nextEpisodeInfo, mediaInfo, introData
 }) {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
@@ -40,6 +42,14 @@ function NetflixPlayer({
   // Paused info overlay
   const [showPausedOverlay, setShowPausedOverlay] = useState(false);
 
+  // Skip intro state
+  const [showSkipIntro, setShowSkipIntro] = useState(false);
+  const [learningIntro, setLearningIntro] = useState(false);
+  const [canLearnIntro, setCanLearnIntro] = useState(false);
+  const [introLearningStep, setIntroLearningStep] = useState(0); // 0: none, 1: marking start, 2: marking end
+  const [tempIntroStart, setTempIntroStart] = useState(0);
+  const [localIntro, setLocalIntro] = useState(introData);
+
   // Update src when prop changes
   useEffect(() => {
     setVideoSrc(src);
@@ -47,6 +57,7 @@ function NetflixPlayer({
     setCountdown(10);
     setNextCancelled(false);
     setShowPausedOverlay(false);
+    setShowSkipIntro(false);
   }, [src]);
 
   // Aggressive autoplay enforce
@@ -223,6 +234,34 @@ function NetflixPlayer({
     }
   }, [currentTime, duration, onNextEpisode, nextEpisodeInfo, nextCancelled, showNextOverlay]);
 
+  useEffect(() => {
+    setLocalIntro(introData);
+  }, [introData]);
+
+  // Skip intro trigger
+  useEffect(() => {
+    if (!localIntro?.end_sec) {
+      setShowSkipIntro(false);
+      return;
+    }
+    const { start_sec, end_sec } = localIntro;
+    if (currentTime >= start_sec && currentTime <= end_sec) {
+      setShowSkipIntro(true);
+    } else {
+      setShowSkipIntro(false);
+    }
+  }, [currentTime, localIntro]);
+
+  // Intro learning trigger
+  useEffect(() => {
+    // Show 'Learn' if it's a TV show, no intro data, and we're early
+    if (mediaInfo?.type === 'episode' && !localIntro?.end_sec && introLearningStep === 0 && currentTime < 600) {
+      setCanLearnIntro(true);
+    } else {
+      setCanLearnIntro(false);
+    }
+  }, [currentTime, localIntro, mediaInfo, introLearningStep]);
+
   // Countdown timer
   useEffect(() => {
     if (!showNextOverlay) {
@@ -252,6 +291,46 @@ function NetflixPlayer({
     setShowNextOverlay(false);
     setNextCancelled(true);
     clearInterval(countdownTimer.current);
+  };
+
+  const handleSkipIntro = () => {
+    const vid = videoRef.current;
+    if (vid && localIntro) {
+      vid.currentTime = localIntro.end_sec + 0.5; // add a tiny buffer
+      setShowSkipIntro(false);
+    }
+  };
+
+  const handleSetIntroStep = async () => {
+    if (!mediaInfo?.showId) return;
+
+    if (introLearningStep === 0) {
+      setIntroLearningStep(1);
+    } else if (introLearningStep === 1) {
+      setTempIntroStart(currentTime);
+      setIntroLearningStep(2);
+    } else if (introLearningStep === 2) {
+      try {
+        setLearningIntro(true);
+        const endSec = currentTime;
+        const startSec = tempIntroStart;
+        await saveIntroOverride(mediaInfo.showId, mediaInfo.season, mediaInfo.episodeNumber, endSec, startSec);
+        setLocalIntro({ start_sec: startSec, end_sec: endSec });
+        setIntroLearningStep(0);
+        setCanLearnIntro(false);
+        const vid = videoRef.current;
+        if (vid) vid.currentTime = endSec + 0.5;
+      } catch (err) {
+        console.error('Failed to save intro override:', err);
+      } finally {
+        setLearningIntro(false);
+      }
+    }
+  };
+
+  const resetIntroLearning = () => {
+    setIntroLearningStep(0);
+    setTempIntroStart(0);
   };
 
   const togglePlay = () => {
@@ -340,8 +419,8 @@ function NetflixPlayer({
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const sec = Math.floor(s % 60);
-    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-    return `${m}:${sec.toString().padStart(2, '0')}`;
+    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')} `;
+    return `${m}:${sec.toString().padStart(2, '0')} `;
   };
 
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -351,7 +430,7 @@ function NetflixPlayer({
 
   // Build the middle title for controls bar
   const controlsTitle = mediaInfo?.type === 'episode'
-    ? `${mediaInfo.showName}  E${mediaInfo.episodeNumber}  ${mediaInfo.episodeName || ''}`
+    ? `${mediaInfo.showName}  E${mediaInfo.episodeNumber}  ${mediaInfo.episodeName || ''} `
     : title;
 
   return (
@@ -499,6 +578,69 @@ function NetflixPlayer({
         )}
       </AnimatePresence>
 
+      {/* ===== SKIP INTRO BUTTON ===== */}
+      <AnimatePresence>
+        {showSkipIntro && (
+          <motion.button
+            className="nfp-skip-intro-btn"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            onClick={handleSkipIntro}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.code === 'Space') {
+                handleSkipIntro();
+              }
+            }}
+          >
+            Skip Intro
+          </motion.button>
+        )}
+
+        {canLearnIntro && !showSkipIntro && introLearningStep === 0 && (
+          <motion.button
+            className="nfp-skip-intro-btn nfp-learn-btn"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            onClick={() => setIntroLearningStep(1)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.code === 'Space') {
+                setIntroLearningStep(1);
+              }
+            }}
+          >
+            Teach Intro
+          </motion.button>
+        )}
+
+        {introLearningStep > 0 && (
+          <motion.div
+            className="nfp-intro-learning-wizard"
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+          >
+            <div className="nfp-wizard-text">
+              <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#e50914' }}>
+                Teaching Episode S{mediaInfo?.season} E{mediaInfo?.episodeNumber}
+              </div>
+              {introLearningStep === 1 ? 'Go to the beginning of the intro and click start' : 'Now go to the end of the intro and click end'}
+            </div>
+            <div className="nfp-wizard-actions">
+              <button
+                className="nfp-wizard-btn main"
+                onClick={handleSetIntroStep}
+                disabled={learningIntro}
+              >
+                {learningIntro ? 'Saving...' : (introLearningStep === 1 ? 'Mark Intro Start' : 'Mark Intro End')}
+              </button>
+              <button className="nfp-wizard-btn cancel" onClick={resetIntroLearning}>Cancel</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ===== CENTER PLAY/PAUSE ===== */}
       <AnimatePresence>
         {showControls && !showPausedOverlay && !buffering && (
@@ -565,9 +707,9 @@ function NetflixPlayer({
                   handleSeek(Math.min(Math.max(pct, 0), 100));
                 }}
               >
-                <div className="nfp-progress-buffered" style={{ width: `${bufferedPct}%` }} />
-                <div className="nfp-progress-played" style={{ width: `${progressPct}%` }} />
-                <div className="nfp-progress-thumb" style={{ left: `${progressPct}%` }} />
+                <div className="nfp-progress-buffered" style={{ width: `${bufferedPct}% ` }} />
+                <div className="nfp-progress-played" style={{ width: `${progressPct}% ` }} />
+                <div className="nfp-progress-thumb" style={{ left: `${progressPct}% ` }} />
               </div>
               <span className="nfp-time-remaining">{formatTime(duration - currentTime)}</span>
             </div>
@@ -600,7 +742,7 @@ function NetflixPlayer({
                       handleVolumeChange(Math.min(Math.max(pct, 0), 100));
                     }}
                   >
-                    <div className="nfp-volume-fill" style={{ width: `${(muted ? 0 : volume) * 100}%` }} />
+                    <div className="nfp-volume-fill" style={{ width: `${(muted ? 0 : volume) * 100}% ` }} />
                   </div>
                 </div>
               </div>
@@ -699,7 +841,7 @@ function NetflixPlayer({
                 return (
                   <div
                     key={ep.id}
-                    className={`nfp-episode-row ${isCurrent ? 'active' : ''}`}
+                    className={`nfp - episode - row ${isCurrent ? 'active' : ''} `}
                     onClick={() => {
                       if (!isCurrent && ep.onPlay) ep.onPlay();
                     }}
@@ -710,7 +852,7 @@ function NetflixPlayer({
                         <span className="nfp-ep-title">{ep.name}</span>
                       </div>
                       <div className="nfp-ep-progress-track">
-                        <div className="nfp-ep-progress-fill" style={{ width: `${(ep.progress || 0) * 100}%` }} />
+                        <div className="nfp-ep-progress-fill" style={{ width: `${(ep.progress || 0) * 100}% ` }} />
                       </div>
                     </div>
 

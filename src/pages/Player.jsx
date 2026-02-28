@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { getMovieDetails, getTvShowDetails, getTvSeasonDetails, getImageUrl } from '../services/tmdb';
 import {
     searchLocalMovies, getLocalMovieStreamUrl,
     searchLocalTvShows, getLocalTvSeasons, getLocalTvEpisodes, getLocalTvStreamUrl,
+    getEpisodeIntro,
 } from '../services/media';
+import { getMovieDetails, getTvShowDetails, getTvSeasonDetails, getImageUrl, getTvEpisodeExternalIds } from '../services/tmdb';
 import { searchSubtitles, fetchSubtitleUrl } from '../services/subtitles';
 import { useUser } from '../contexts/UserContext';
 import { getOfflineVideos } from '../services/offlineStorage';
@@ -40,6 +41,7 @@ function Player() {
     const [localSeasonFolder, setLocalSeasonFolder] = useState('');
     const [localEpisodeSet, setLocalEpisodeSet] = useState(new Set());
     const [mediaInfo, setMediaInfo] = useState(null);
+    const [introData, setIntroData] = useState(null);
 
     // Autosave progress every 60 seconds
     useEffect(() => {
@@ -180,6 +182,7 @@ function Player() {
             episodeNumber: episodeNum,
             episodeName: ep?.name || '',
             overview: ep?.overview || show.overview,
+            showId: tmdbId,
         });
 
         // Find local files and build episode data
@@ -281,6 +284,22 @@ function Player() {
             localEpisodes: localEps,
         });
 
+        // FETCH INTRO TIMESTAMPS
+        // Fetch show's IMDb ID from the already loaded 'show' data (now including external_ids)
+        const showImdbId = show.external_ids?.imdb_id;
+        if (showImdbId || tmdbId) {
+            try {
+                const introRes = await getEpisodeIntro(showImdbId, seasonNum, episodeNum, tmdbId);
+                setIntroData(introRes.data);
+                console.log('Intro data loaded for show:', show.name);
+            } catch (err) {
+                // IntroDB returns 404 if no data, no need to log error as it's common
+                if (err.response?.status !== 404) {
+                    console.warn('Could not fetch intro timestamps:', err.message);
+                }
+            }
+        }
+
         // Determine next episode
         const currentEpIndex = episodes.findIndex(e => e.episode_number === episodeNum);
         if (currentEpIndex >= 0 && currentEpIndex < episodes.length - 1) {
@@ -364,6 +383,7 @@ function Player() {
                 onNextEpisode={type === 'episode' ? playNextEpisode : null}
                 nextEpisodeInfo={type === 'episode' ? nextEpisodeInfo : null}
                 mediaInfo={mediaInfo}
+                introData={introData}
             />
         </div>
     );

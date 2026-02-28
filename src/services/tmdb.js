@@ -32,13 +32,17 @@ export const getMovieDetails = (movieId) =>
   getApi().get(`/movie/${movieId}`, { params: { append_to_response: 'credits,videos' } });
 
 export const getTvShowDetails = (tvId) =>
-  getApi().get(`/tv/${tvId}`, { params: { append_to_response: 'credits,videos' } });
+  getApi().get(`/tv/${tvId}`, { params: { append_to_response: 'credits,videos,external_ids' } });
 
 export const getTvSeasonDetails = (tvId, seasonNumber) =>
   getApi().get(`/tv/${tvId}/season/${seasonNumber}`);
 
 export const getTvEpisodeDetails = (tvId, seasonNumber, episodeNumber) =>
   getApi().get(`/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}`);
+export const getTvEpisodeExternalIds = (tvId, seasonNumber, episodeNumber) =>
+  getApi().get(`/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}/external_ids`);
+export const getTvShowExternalIds = (tvId) =>
+  getApi().get(`/tv/${tvId}/external_ids`);
 
 export const getSimilarMovies = (movieId) =>
   getApi().get(`/movie/${movieId}/recommendations`);

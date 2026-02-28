@@ -785,6 +785,68 @@ app.get('/api/subtitles/download', async (req, res) => {
     res.status(500).json({ error: 'Subtitle download failed' });
   }
 });
+// ========== INTRO/SKIP INTRO ==========
+// ========== INTRO OVERRIDES (Local Learning) ==========
+const INTRO_OVERRIDES_FILE = path.join(DATA_DIR, 'intro_overrides.json');
+let introOverrides = {};
+try {
+  if (fs.existsSync(INTRO_OVERRIDES_FILE)) {
+    introOverrides = JSON.parse(fs.readFileSync(INTRO_OVERRIDES_FILE, 'utf-8'));
+  }
+} catch (e) { console.error('Failed to load intro overrides:', e.message); }
+
+app.get('/api/intro/overrides', (req, res) => {
+  res.json(introOverrides);
+});
+
+app.post('/api/intro/overrides', (req, res) => {
+  const { tmdb_id, season, episode, start_sec, end_sec } = req.body;
+  if (!tmdb_id || !season || !episode || end_sec === undefined) {
+    return res.status(400).json({ error: 'tmdb_id, season, episode and end_sec required' });
+  }
+
+  const key = `${tmdb_id}_s${season}e${episode}`;
+  introOverrides[key] = {
+    tmdb_id,
+    season,
+    episode,
+    start_sec: start_sec || 0,
+    end_sec,
+    updated_at: new Date().toISOString()
+  };
+
+  fs.writeFile(INTRO_OVERRIDES_FILE, JSON.stringify(introOverrides, null, 2), (err) => {
+    if (err) console.error('Error saving intro overrides:', err);
+    res.json({ success: true, data: introOverrides[key] });
+  });
+});
+
+app.get('/api/intro', async (req, res) => {
+  const { imdb_id, season, episode, tmdb_id } = req.query;
+
+  // Check local overrides first (episode-specific)
+  if (tmdb_id && season && episode) {
+    const key = `${tmdb_id}_s${season}e${episode}`;
+    if (introOverrides[key]) {
+      console.log(`[Intro] Using local override for ${key}`);
+      return res.json(introOverrides[key]);
+    }
+  }
+
+  if (!imdb_id || !season || !episode) return res.status(400).json({ error: 'imdb_id, season, episode required' });
+
+  try {
+    const url = `https://api.introdb.app/intro?imdb_id=${imdb_id}&season=${season}&episode=${episode}`;
+    const response = await axios.get(url);
+    res.json(response.data);
+  } catch (err) {
+    if (err.response && err.response.status === 404) {
+      return res.json({}); // Suppress 404 in console by returning empty object
+    }
+    console.error('IntroDB API error:', err.message);
+    res.status(500).json({ error: 'Intro query failed' });
+  }
+});
 
 // ========== TMDB Server-Side Cache ==========
 const axios = require('axios');
