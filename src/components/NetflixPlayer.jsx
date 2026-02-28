@@ -91,6 +91,12 @@ function NetflixPlayer({
     clearTimeout(pausedOverlayTimer.current);
     if (playing) {
       hideTimer.current = setTimeout(() => setShowControls(false), 3000);
+    } else {
+      // If paused, show the paused info overlay after 1.5 seconds of inactivity
+      pausedOverlayTimer.current = setTimeout(() => {
+        setShowPausedOverlay(true);
+        setShowControls(false);
+      }, 1500);
     }
   }, [playing]);
 
@@ -103,12 +109,12 @@ function NetflixPlayer({
       hideTimer.current = setTimeout(() => setShowControls(false), 3000);
       setShowPausedOverlay(false);
     } else if (!playing && !showEpisodes && !showNextOverlay && !buffering) {
-      // When paused, show controls forever, and start 5s timer for paused overlay
+      // When paused, show controls forever, and start a 1.5s timer for the paused overlay
       setShowControls(true);
       pausedOverlayTimer.current = setTimeout(() => {
         setShowPausedOverlay(true);
         setShowControls(false);
-      }, 5000);
+      }, 1500);
     } else {
       setShowControls(true);
     }
@@ -632,7 +638,7 @@ function NetflixPlayer({
       {/* ===== OVERLAYS (Subtitle, Episodes, Wizard, etc) ===== */}
       <AnimatePresence>
         {/* Paused Overlay */}
-        {showPausedOverlay && !playing && mediaInfo && (
+        {showPausedOverlay && !playing && (
           <motion.div
             className="nfp-paused-overlay"
             initial={{ opacity: 0 }}
@@ -641,17 +647,23 @@ function NetflixPlayer({
             onClick={togglePlay}
           >
             <div className="nfp-paused-info">
-              <span className="nfp-paused-label">You're watching</span>
-              <h1 className="nfp-paused-show">{mediaInfo.showName || mediaInfo.movieTitle}</h1>
-              {mediaInfo.type === 'episode' && (
+              {mediaInfo ? (
                 <>
-                  <span className="nfp-paused-season">Season {mediaInfo.season}</span>
-                  <h2 className="nfp-paused-ep">
-                    {mediaInfo.episodeName}: Ep. {mediaInfo.episodeNumber}
-                  </h2>
+                  <span className="nfp-paused-label">You're watching</span>
+                  <h1 className="nfp-paused-show">{mediaInfo.showName || mediaInfo.movieTitle}</h1>
+                  {mediaInfo.type === 'episode' && (
+                    <>
+                      <span className="nfp-paused-season">Season {mediaInfo.season}</span>
+                      <h2 className="nfp-paused-ep">
+                        {mediaInfo.episodeName}: Ep. {mediaInfo.episodeNumber}
+                      </h2>
+                    </>
+                  )}
+                  <p className="nfp-paused-desc">{mediaInfo.overview}</p>
                 </>
+              ) : (
+                <h1 className="nfp-paused-show">Paused</h1>
               )}
-              <p className="nfp-paused-desc">{mediaInfo.overview}</p>
             </div>
             <span className="nfp-paused-tag">Paused</span>
           </motion.div>
