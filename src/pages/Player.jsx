@@ -139,6 +139,9 @@ function Player() {
             overview: movie.overview,
         });
 
+        // Trigger Subtitle search
+        loadSubtitles(tmdbId, 'movie', null, null, movie.title);
+
         if (hasDirectUrl) return; // Skip heavy local mapping
 
         // Find local file
@@ -184,6 +187,9 @@ function Player() {
             overview: ep?.overview || show.overview,
             showId: tmdbId,
         });
+
+        // Trigger Subtitle search
+        loadSubtitles(tmdbId, 'episode', seasonNum, episodeNum, show.name);
 
         // Find local files and build episode data
         const localRes = await searchLocalTvShows(show.name);
@@ -347,6 +353,45 @@ function Player() {
         navigate(`/play?type=episode&id=${tmdbId}&season=${nextEpisodeInfo.season}&episode=${nextEpisodeInfo.episode}`, { replace: true });
     };
 
+    const loadSubtitles = async (id, mType, s, e, title) => {
+        try {
+            const results = await searchSubtitles(id, mType, s, e, 'en', null, title);
+            setSubtitles(results);
+            // Auto-load the first English result if score is decent
+            if (results.length > 0) {
+                const subUrl = await fetchSubtitleUrl(results[0].attributes.files[0].file_id);
+                if (subUrl) {
+                    setCurrentSubtitle({
+                        id: results[0].id,
+                        url: subUrl,
+                        name: results[0].attributes.release || 'English'
+                    });
+                }
+            }
+        } catch (err) {
+            console.warn('Failed to load subtitles:', err);
+        }
+    };
+
+    const onSelectSubtitle = async (sub) => {
+        if (!sub) {
+            setCurrentSubtitle(null);
+            return;
+        }
+        try {
+            const subUrl = await fetchSubtitleUrl(sub.attributes.files[0].file_id);
+            if (subUrl) {
+                setCurrentSubtitle({
+                    id: sub.id,
+                    url: subUrl,
+                    name: sub.attributes.release || sub.attributes.language
+                });
+            }
+        } catch (err) {
+            console.error('Failed to select subtitle:', err);
+        }
+    };
+
     const handleBack = () => {
         navigate(-1);
     };
@@ -384,6 +429,9 @@ function Player() {
                 nextEpisodeInfo={type === 'episode' ? nextEpisodeInfo : null}
                 mediaInfo={mediaInfo}
                 introData={introData}
+                subtitles={subtitles}
+                currentSubtitle={currentSubtitle}
+                onSelectSubtitle={onSelectSubtitle}
             />
         </div>
     );

@@ -679,6 +679,8 @@ app.get('/api/download/status', (req, res) => {
 
 const OPENSUBTITLES_API_KEY = process.env.OPENSUBTITLES_API_KEY || '';
 const OPENSUBTITLES_BASE = 'https://api.opensubtitles.com/api/v1';
+const SUBTITLES_CACHE_DIR = path.join(DATA_DIR, 'subtitles_cache');
+if (!fs.existsSync(SUBTITLES_CACHE_DIR)) fs.mkdirSync(SUBTITLES_CACHE_DIR, { recursive: true });
 
 app.get('/api/subtitles/search', async (req, res) => {
   if (!OPENSUBTITLES_API_KEY) return res.status(503).json({ error: 'OPENSUBTITLES_API_KEY not configured' });
@@ -736,7 +738,7 @@ app.get('/api/subtitles/search', async (req, res) => {
       }
 
       // Limit English results
-      data.data = [...en.slice(0, 5), ...others];
+      data.data = [...en.slice(0, 15), ...others];
     }
 
     res.json(data);
@@ -756,11 +758,24 @@ function srtToVtt(srt) {
 }
 
 app.get('/api/subtitles/download', async (req, res) => {
-  if (!OPENSUBTITLES_API_KEY) return res.status(503).json({ error: 'OPENSUBTITLES_API_KEY not configured' });
   const { file_id } = req.query;
   if (!file_id) return res.status(400).json({ error: 'file_id required' });
 
+  const cachePath = path.join(SUBTITLES_CACHE_DIR, `${file_id}.vtt`);
+
+  // 1. Check disk cache first
+  if (fs.existsSync(cachePath)) {
+    console.log(`[Subtitle Cache] Hit! Serving from disk: ${file_id}`);
+    res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.sendFile(cachePath);
+  }
+
+  // 2. Not in cache, fetch from OpenSubtitles
+  if (!OPENSUBTITLES_API_KEY) return res.status(503).json({ error: 'OPENSUBTITLES_API_KEY not configured' });
+
   try {
+    console.log(`[Subtitle Cache] Miss. Fetching from OpenSubtitles: ${file_id}`);
     const dlRes = await fetch(`${OPENSUBTITLES_BASE}/download`, {
       method: 'POST',
       headers: {
@@ -771,12 +786,21 @@ app.get('/api/subtitles/download', async (req, res) => {
       body: JSON.stringify({ file_id: parseInt(file_id) }),
     });
     const dlData = await dlRes.json();
-    if (!dlData.link) return res.status(404).json({ error: 'No download link returned', details: dlData });
+
+    if (!dlData.link) {
+      console.warn('[Subtitle Download API] No download link returned:', dlData);
+      return res.status(404).json({ error: 'No download link returned', details: dlData });
+    }
 
     const srtRes = await fetch(dlData.link);
     const srtText = await srtRes.text();
 
     const vtt = srtToVtt(srtText);
+
+    // 3. Save to disk cache for future requests
+    fs.writeFileSync(cachePath, vtt, 'utf-8');
+    console.log(`[Subtitle Cache] Saved to disk: ${file_id}`);
+
     res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.send(vtt);

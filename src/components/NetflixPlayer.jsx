@@ -4,14 +4,17 @@ import {
   Play, Pause, Maximize, Minimize, Volume2, Volume1, VolumeX,
   List, ChevronDown, ChevronLeft, Forward as NextIcon,
   Flag, MonitorSpeaker, ArrowLeft, RotateCcw, RotateCw, PictureInPicture,
-  Share, Check
+  Share, Check, Languages as SubIcon, Settings,
+  ThumbsDown, ThumbsUp, Heart, Lock, Unlock, X, Sun,
+  Scissors, Gauge, MessageSquareText, StepForward
 } from 'lucide-react';
 import { saveIntroOverride } from '../services/media';
 import './NetflixPlayer.css';
 
 function NetflixPlayer({
   src, title, onClose, onProgress, startTime, episodes,
-  onNextEpisode, nextEpisodeInfo, mediaInfo, introData
+  onNextEpisode, nextEpisodeInfo, mediaInfo, introData,
+  subtitles, currentSubtitle, onSelectSubtitle
 }) {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
@@ -49,6 +52,12 @@ function NetflixPlayer({
   const [introLearningStep, setIntroLearningStep] = useState(0); // 0: none, 1: marking start, 2: marking end
   const [tempIntroStart, setTempIntroStart] = useState(0);
   const [localIntro, setLocalIntro] = useState(introData);
+
+  // Subtitle state
+  const [showSubMenu, setShowSubMenu] = useState(false);
+  const [subtitleOffset, setSubtitleOffset] = useState(0); // in ms
+
+  // New UI states
 
   // Update src when prop changes
   useEffect(() => {
@@ -344,6 +353,13 @@ function NetflixPlayer({
     else vid.pause();
   };
 
+  const handleSubtitleOffset = (ms) => {
+    setSubtitleOffset(prev => prev + ms);
+    // Since we are using standard <track>, real-time offset is tricky. 
+    // Usually requires manual track rendering or re-downloading.
+    // For now, let's just make picking the *right* one easy.
+  };
+
   const skip = (seconds) => {
     const vid = videoRef.current;
     if (!vid) return;
@@ -395,6 +411,23 @@ function NetflixPlayer({
     }
   };
 
+  const handleBuffer = () => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    if (vid.buffered.length > 0) {
+      setBuffered(vid.buffered.end(vid.buffered.length - 1));
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    setDuration(vid.duration || 0);
+    if (startTime && startTime > 0 && startTime < vid.duration * 0.95) {
+      vid.currentTime = startTime;
+    }
+  };
+
   const handleSeek = (pct) => {
     const vid = videoRef.current;
     if (!vid || !duration) return;
@@ -430,25 +463,24 @@ function NetflixPlayer({
 
   // Build the middle title for controls bar
   const controlsTitle = mediaInfo?.type === 'episode'
-    ? `${mediaInfo.showName}  E${mediaInfo.episodeNumber}  ${mediaInfo.episodeName || ''} `
+    ? `S${mediaInfo.season}:E${mediaInfo.episodeNumber} "${mediaInfo.episodeName || ''}"`
     : title;
 
   return (
     <div
       ref={playerRef}
-      className="nfp-player"
+      className={`nfp-player ${showControls ? 'show-controls' : ''}`}
       onMouseMove={() => {
-        if (showPausedOverlay) return; // Don't interrupt paused overlay on mouse move
         showControlsTemporarily();
       }}
       onClick={(e) => {
-        if (showEpisodes || showNextOverlay) return;
+        if (showEpisodes || showNextOverlay || showSubMenu) return;
         if (showPausedOverlay) {
           setShowPausedOverlay(false);
           setShowControls(true);
           return;
         }
-        if (e.target === e.currentTarget || e.target.closest('.nfp-video-area')) {
+        if (e.target.closest('.nfp-click-capture')) {
           togglePlay();
           showControlsTemporarily();
         }
@@ -456,23 +488,14 @@ function NetflixPlayer({
     >
       <video
         ref={videoRef}
-        src={videoSrc}
+        key={videoSrc}
         className="nfp-video"
-        autoPlay
-        preload="auto"
-        crossOrigin="anonymous"
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
+        src={videoSrc}
         onTimeUpdate={handleTimeUpdate}
-        onProgress={handleTimeUpdate}
-        onLoadedMetadata={() => {
-          const vid = videoRef.current;
-          if (!vid) return;
-          setDuration(vid.duration || 0);
-          if (startTime && startTime > 0 && startTime < vid.duration * 0.95) {
-            vid.currentTime = startTime;
-          }
-        }}
+        onPause={() => setPlaying(false)}
+        onPlay={() => setPlaying(true)}
+        onProgress={handleBuffer}
+        onLoadedMetadata={handleLoadedMetadata}
         onWaiting={() => setBuffering(true)}
         onPlaying={() => setBuffering(false)}
         onCanPlay={() => setBuffering(false)}
@@ -484,29 +507,122 @@ function NetflixPlayer({
           }
         }}
       >
-
+        {currentSubtitle && (
+          <track
+            key={currentSubtitle.url}
+            src={currentSubtitle.url}
+            kind="subtitles"
+            srcLang="en"
+            label={currentSubtitle.name}
+            default
+          />
+        )}
       </video>
 
-      <div className="nfp-video-area" />
+      <div className="nfp-click-capture" />
 
-      {/* Buffering spinner */}
-      {
-        buffering && (
-          <div className="nfp-buffering">
-            <div className="nfp-buffering-spinner" />
-          </div>
-        )
-      }
+      {buffering && (
+        <div className="nfp-buffering">
+          <div className="nfp-buffering-spinner" />
+        </div>
+      )}
 
-      {/* ===== PAUSED INFO OVERLAY ===== */}
+      {/* ===== CONTROLS LAYER ===== */}
       <AnimatePresence>
+        {showControls && !showPausedOverlay && (
+          <motion.div
+            className="nfp-controls-root"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {/* Top Bar */}
+            <div className="nfp-top-bar">
+              <div className="nfp-top-left">
+                <span className="nfp-top-title">{controlsTitle}</span>
+              </div>
+
+              <div className="nfp-top-right">
+                <button className="nfp-system-btn" onClick={onClose}><X size={32} /></button>
+              </div>
+            </div>
+
+            {true && (
+              <>
+                {/* Middle Controls */}
+                <div className="nfp-middle-controls">
+                  <div className="nfp-center-cluster">
+                    <button className="nfp-center-skip-btn" onClick={() => skip(-10)}>
+                      <RotateCcw className="nfp-center-skip-icon" />
+                      <span className="nfp-skip-text" style={{ fontSize: '1.2rem', marginTop: '-48px' }}>10</span>
+                    </button>
+
+                    <button className="nfp-center-play-btn" onClick={togglePlay}>
+                      {playing ? <Pause className="nfp-center-play-icon" /> : <Play className="nfp-center-play-icon" fill="currentColor" />}
+                    </button>
+
+                    <button className="nfp-center-skip-btn" onClick={() => skip(10)}>
+                      <RotateCw className="nfp-center-skip-icon" />
+                      <span className="nfp-skip-text" style={{ fontSize: '1.2rem', marginTop: '-48px' }}>10</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bottom UI */}
+                <div className="nfp-bottom-ui">
+                  <div className="nfp-timeline-area">
+                    <div className="nfp-progress-container" onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+                      handleSeek(pct);
+                    }}>
+                      <div className="nfp-progress-rail">
+                        <div className="nfp-progress-fill" style={{ width: `${progressPct}%` }} />
+                        <div className="nfp-progress-thumb" style={{ left: `${progressPct}%` }} />
+                      </div>
+                    </div>
+                    <div className="nfp-time-display">{formatTime(duration - currentTime)}</div>
+                  </div>
+
+                  <div className="nfp-action-bar">
+                    <button className="nfp-action-item">
+                      <Gauge size={24} />
+                      <span>Speed (1x)</span>
+                    </button>
+                    <button className="nfp-action-item" onClick={() => setShowEpisodes(true)}>
+                      <List size={24} />
+                      <span>Episodes</span>
+                    </button>
+                    <button className="nfp-action-item" onClick={() => setShowSubMenu(true)}>
+                      <MessageSquareText size={24} />
+                      <span>Audio & Subtitles</span>
+                    </button>
+                    <button className="nfp-action-item" onClick={toggleFullscreen}>
+                      {fullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
+                      <span>Fullscreen</span>
+                    </button>
+                    <button className="nfp-action-item" onClick={triggerNextEpisode}>
+                      <StepForward size={24} />
+                      <span>Next Episode</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ===== OVERLAYS (Subtitle, Episodes, Wizard, etc) ===== */}
+      <AnimatePresence>
+        {/* Paused Overlay */}
         {showPausedOverlay && !playing && mediaInfo && (
           <motion.div
             className="nfp-paused-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.6 }}
             onClick={() => {
               setShowPausedOverlay(false);
               setShowControls(true);
@@ -521,65 +637,34 @@ function NetflixPlayer({
                   <h2 className="nfp-paused-ep">
                     {mediaInfo.episodeName}: Ep. {mediaInfo.episodeNumber}
                   </h2>
-                  {mediaInfo.overview && (
-                    <p className="nfp-paused-desc">{mediaInfo.overview}</p>
-                  )}
                 </>
               )}
-              {mediaInfo.type === 'movie' && mediaInfo.overview && (
-                <p className="nfp-paused-desc">{mediaInfo.overview}</p>
-              )}
+              <p className="nfp-paused-desc">{mediaInfo.overview}</p>
             </div>
             <span className="nfp-paused-tag">Paused</span>
           </motion.div>
         )}
-      </AnimatePresence>
 
-      {/* ===== NEXT EPISODE OVERLAY ===== */}
-      <AnimatePresence>
+        {/* Next Episode Countdown */}
         {showNextOverlay && nextEpisodeInfo && (
           <motion.div
             className="nfp-next-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
           >
             <div className="nfp-next-content">
-              <div className="nfp-next-label">Next Episode</div>
-              <div className="nfp-next-title">
-                {nextEpisodeInfo.showName} — S{nextEpisodeInfo.season}E{nextEpisodeInfo.episode}
-              </div>
-              {nextEpisodeInfo.episodeTitle && (
-                <div className="nfp-next-ep-title">{nextEpisodeInfo.episodeTitle}</div>
-              )}
+              <div className="nfp-next-label">Next Episode in {countdown}</div>
+              <div className="nfp-next-title">{nextEpisodeInfo.showName} S{nextEpisodeInfo.season}E{nextEpisodeInfo.episode}</div>
               <div className="nfp-next-actions">
-                <button className="nfp-next-play-btn" onClick={triggerNextEpisode}>
-                  <Play size={18} fill="white" /> Play Now
-                </button>
-                <button className="nfp-next-cancel-btn" onClick={cancelNextEpisode}>
-                  Cancel
-                </button>
-              </div>
-              <div className="nfp-next-countdown">
-                <div className="nfp-countdown-ring">
-                  <svg viewBox="0 0 40 40">
-                    <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-                    <circle cx="20" cy="20" r="18" fill="none" stroke="#e50914" strokeWidth="2"
-                      strokeDasharray={`${(countdown / 10) * 113} 113`}
-                      strokeLinecap="round" transform="rotate(-90 20 20)"
-                      style={{ transition: 'stroke-dasharray 1s linear' }} />
-                  </svg>
-                  <span className="nfp-countdown-num">{countdown}</span>
-                </div>
+                <button className="nfp-next-play-btn" onClick={triggerNextEpisode}>Play Now</button>
+                <button className="nfp-next-cancel-btn" onClick={cancelNextEpisode}>Cancel</button>
               </div>
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
 
-      {/* ===== SKIP INTRO BUTTON ===== */}
-      <AnimatePresence>
+        {/* Skip Intro */}
         {showSkipIntro && (
           <motion.button
             className="nfp-skip-intro-btn"
@@ -587,33 +672,12 @@ function NetflixPlayer({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
             onClick={handleSkipIntro}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.code === 'Space') {
-                handleSkipIntro();
-              }
-            }}
           >
             Skip Intro
           </motion.button>
         )}
 
-        {canLearnIntro && !showSkipIntro && introLearningStep === 0 && (
-          <motion.button
-            className="nfp-skip-intro-btn nfp-learn-btn"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            onClick={() => setIntroLearningStep(1)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.code === 'Space') {
-                setIntroLearningStep(1);
-              }
-            }}
-          >
-            Teach Intro
-          </motion.button>
-        )}
-
+        {/* Intro Learning Wizard */}
         {introLearningStep > 0 && (
           <motion.div
             className="nfp-intro-learning-wizard"
@@ -625,249 +689,149 @@ function NetflixPlayer({
               <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#e50914' }}>
                 Teaching Episode S{mediaInfo?.season} E{mediaInfo?.episodeNumber}
               </div>
-              {introLearningStep === 1 ? 'Go to the beginning of the intro and click start' : 'Now go to the end of the intro and click end'}
+              {introLearningStep === 1 ? 'Go to start of intro' : 'Go to end of intro'}
             </div>
             <div className="nfp-wizard-actions">
-              <button
-                className="nfp-wizard-btn main"
-                onClick={handleSetIntroStep}
-                disabled={learningIntro}
-              >
-                {learningIntro ? 'Saving...' : (introLearningStep === 1 ? 'Mark Intro Start' : 'Mark Intro End')}
+              <button className="nfp-wizard-btn main" onClick={handleSetIntroStep}>
+                {introLearningStep === 1 ? 'Mark Start' : 'Mark End'}
               </button>
               <button className="nfp-wizard-btn cancel" onClick={resetIntroLearning}>Cancel</button>
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
 
-      {/* ===== CENTER PLAY/PAUSE ===== */}
-      <AnimatePresence>
-        {showControls && !showPausedOverlay && !buffering && (
+        {/* Subtitles Overlay */}
+        {showSubMenu && (
           <motion.div
-            className="nfp-center-controls"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.2 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              togglePlay();
-              showControlsTemporarily();
+            className="nfp-subtitles-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => {
+              setShowSubMenu(false);
+              videoRef.current?.play();
+              setPlaying(true);
             }}
           >
-            <div className="nfp-center-play-btn">
-              {playing ? (
-                <Pause size={48} fill="white" className="nfp-center-icon" />
-              ) : (
-                <Play size={48} fill="white" className="nfp-center-icon" style={{ marginLeft: '4px' }} />
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ===== TOP BAR — back arrow left, flag right ===== */}
-      <AnimatePresence>
-        {showControls && !showPausedOverlay && (
-          <motion.div
-            className="nfp-top-bar"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <button className="nfp-back-btn" onClick={onClose}>
-              <ChevronLeft size={28} strokeWidth={2.5} />
-            </button>
-            <button className="nfp-flag-btn">
-              <Flag size={20} />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ===== BOTTOM CONTROLS ===== */}
-      <AnimatePresence>
-        {showControls && !showPausedOverlay && (
-          <motion.div
-            className="nfp-bottom"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            {/* Progress bar — full width, red */}
-            <div className="nfp-progress-wrap">
-              <div
-                className="nfp-progress-bar"
-                onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const pct = ((e.clientX - rect.left) / rect.width) * 100;
-                  handleSeek(Math.min(Math.max(pct, 0), 100));
-                }}
-              >
-                <div className="nfp-progress-buffered" style={{ width: `${bufferedPct}% ` }} />
-                <div className="nfp-progress-played" style={{ width: `${progressPct}% ` }} />
-                <div className="nfp-progress-thumb" style={{ left: `${progressPct}% ` }} />
+            <div className="nfp-netflix-sub-panel" onClick={e => e.stopPropagation()}>
+              <div className="nfp-netflix-sub-header" style={{ justifyContent: 'flex-end', display: 'flex', padding: '20px' }}>
+                <button className="nfp-netflix-sub-close" onClick={() => {
+                  setShowSubMenu(false);
+                  videoRef.current?.play();
+                  setPlaying(true);
+                }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+                  <X size={40} />
+                </button>
               </div>
-              <span className="nfp-time-remaining">{formatTime(duration - currentTime)}</span>
-            </div>
 
-            {/* Controls row */}
-            <div className="nfp-controls-row">
-              {/* Left controls */}
-              <div className="nfp-controls-left">
-                <button className="nfp-ctrl-btn" onClick={togglePlay}>
-                  {playing ? <Pause size={24} /> : <Play size={24} fill="white" />}
-                </button>
-                <button className="nfp-ctrl-btn nfp-skip-btn" onClick={() => skip(-10)} title="-10s">
-                  <RotateCcw size={22} />
-                  <span className="nfp-skip-text">10</span>
-                </button>
-                <button className="nfp-ctrl-btn nfp-skip-btn" onClick={() => skip(10)} title="+10s">
-                  <RotateCw size={22} />
-                  <span className="nfp-skip-text">10</span>
-                </button>
-
-                <div className="nfp-volume-group">
-                  <button className="nfp-ctrl-btn" onClick={toggleMute}>
-                    {muted || volume === 0 ? <VolumeX size={22} /> :
-                      volume > 0.5 ? <Volume2 size={22} /> : <Volume1 size={22} />}
-                  </button>
-                  <div className="nfp-volume-slider"
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const pct = ((e.clientX - rect.left) / rect.width) * 100;
-                      handleVolumeChange(Math.min(Math.max(pct, 0), 100));
-                    }}
-                  >
-                    <div className="nfp-volume-fill" style={{ width: `${(muted ? 0 : volume) * 100}% ` }} />
+              <div className="nfp-netflix-sub-columns">
+                <div className="nfp-netflix-sub-column">
+                  <h3>Audio</h3>
+                  <div className="nfp-netflix-sub-list">
+                    <div className="nfp-netflix-sub-item active">
+                      <Check size={20} className="nfp-netflix-sub-check" />
+                      Original Audio (English)
+                    </div>
                   </div>
                 </div>
-              </div>
+                <div className="nfp-netflix-sub-column">
+                  <h3>Subtitles</h3>
+                  <div className="nfp-netflix-sub-list">
+                    <div className={`nfp-netflix-sub-item ${!currentSubtitle ? 'active' : ''}`} onClick={() => { onSelectSubtitle(null); setShowSubMenu(false); videoRef.current?.play(); setPlaying(true); }}>
+                      <Check size={20} className="nfp-netflix-sub-check" />
+                      Off
+                    </div>
+                    {subtitles?.map(sub => (
+                      <div key={sub.id} className={`nfp-netflix-sub-item ${currentSubtitle?.id === sub.id ? 'active' : ''}`} onClick={() => { onSelectSubtitle(sub); setShowSubMenu(false); videoRef.current?.play(); setPlaying(true); }}>
+                        <Check size={20} className="nfp-netflix-sub-check" />
+                        {sub.attributes.release || sub.attributes.language}
+                      </div>
+                    ))}
+                  </div>
 
-              {/* Center title */}
-              <div className="nfp-controls-center">
-                <span className="nfp-controls-title">{controlsTitle}</span>
-              </div>
-
-              {/* Right controls */}
-              <div className="nfp-controls-right">
-                {/* Next episode */}
-                {onNextEpisode && nextEpisodeInfo && (
-                  <button className="nfp-ctrl-btn" onClick={triggerNextEpisode} title="Next Episode">
-                    <NextIcon size={22} />
-                    <span className="nfp-ctrl-pipe">|</span>
-                  </button>
-                )}
-
-                {/* Cast (placeholder) */}
-                <button className="nfp-ctrl-btn" title="Cast">
-                  <MonitorSpeaker size={22} />
-                </button>
-
-
-
-                {/* Episode list */}
-                {episodes && (
-                  <button
-                    className={`nfp-ctrl-btn ${showEpisodes ? 'active' : ''}`}
-                    onClick={() => setShowEpisodes(!showEpisodes)}
-                    title="Episodes"
-                  >
-                    <List size={22} />
-                  </button>
-                )}
-
-                {/* Picture in Picture */}
-                <button className="nfp-ctrl-btn" onClick={togglePiP} title="Picture in Picture">
-                  <PictureInPicture size={20} />
-                </button>
-
-                {/* Fullscreen */}
-                <button className="nfp-ctrl-btn" onClick={toggleFullscreen}>
-                  {fullscreen ? <Minimize size={22} /> : <Maximize size={22} />}
-                </button>
+                  {currentSubtitle && (
+                    <div className="nfp-netflix-sync-area">
+                      <div className="nfp-netflix-sync-title">SYNC CORRECTION</div>
+                      <div className="nfp-sync-controls">
+                        <button className="nfp-sync-btn" onClick={() => handleSubtitleOffset(-500)}>-500ms</button>
+                        <button className="nfp-sync-btn" onClick={() => handleSubtitleOffset(-100)}>-100ms</button>
+                        <span className="nfp-sync-val">{subtitleOffset > 0 ? '+' : ''}{subtitleOffset}ms</span>
+                        <button className="nfp-sync-btn" onClick={() => handleSubtitleOffset(100)}>+100ms</button>
+                        <button className="nfp-sync-btn" onClick={() => handleSubtitleOffset(500)}>+500ms</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
 
-
-
-      {/* Episode list sidebar */}
-      <AnimatePresence>
+        {/* Episodes Horizontal Panel */}
         {showEpisodes && episodes && (
           <motion.div
             className="nfp-episodes-panel"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
           >
             <div className="nfp-episodes-header">
-              <button className="nfp-episodes-back-btn" onClick={() => setShowEpisodes(false)}>
-                <ArrowLeft size={24} />
+              <select
+                className="nfp-season-selector"
+                value={selectedSeason || episodes.currentSeason}
+                onChange={(e) => setSelectedSeason(parseInt(e.target.value))}
+              >
+                {episodes.seasons?.map(s => (
+                  <option key={s.season_number} value={s.season_number}>
+                    Season {s.season_number}
+                  </option>
+                ))}
+              </select>
+
+              <button className="nfp-episodes-close-btn" onClick={() => setShowEpisodes(false)}>
+                <X size={40} />
               </button>
-              {episodes.seasons?.length > 1 ? (
-                <div className="nfp-season-select-wrapper">
-                  <select
-                    value={selectedSeason || ''}
-                    onChange={(e) => setSelectedSeason(Number(e.target.value))}
-                    className="nfp-season-select-input"
-                  >
-                    {episodes.seasons.map((s) => (
-                      <option key={s.season_number} value={s.season_number}>
-                        Season {s.season_number}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="nfp-season-select-label">Season {selectedSeason}</span>
-                  <ChevronDown size={14} className="nfp-season-chevron" />
-                </div>
-              ) : (
-                <span className="nfp-season-title">Season {selectedSeason}</span>
-              )}
             </div>
 
             <div className="nfp-episodes-list">
-              {currentSeasonData?.episodes?.map((ep) => {
-                const isCurrent =
-                  ep.season_number === episodes.currentSeason &&
-                  ep.episode_number === episodes.currentEpisode;
+              {episodes.seasons?.find(s => s.season_number === (selectedSeason || episodes.currentSeason))?.episodes?.map(ep => {
+                const isCurrent = ep.episode_number === episodes.currentEpisode &&
+                  (selectedSeason || episodes.currentSeason) === episodes.currentSeason;
 
                 return (
                   <div
                     key={ep.id}
-                    className={`nfp - episode - row ${isCurrent ? 'active' : ''} `}
+                    className={`nfp-episode-card ${isCurrent ? 'active' : ''}`}
                     onClick={() => {
                       if (!isCurrent && ep.onPlay) ep.onPlay();
+                      setShowEpisodes(false);
+                      videoRef.current?.play();
+                      setPlaying(true);
                     }}
                   >
-                    <div className="nfp-ep-top">
-                      <span className="nfp-ep-num">{ep.episode_number}</span>
-                      <div className="nfp-ep-title-group">
-                        <span className="nfp-ep-title">{ep.name}</span>
+                    <div className="nfp-ep-thumb-container">
+                      <img
+                        src={ep.still_path || ep.thumbnail || "https://via.placeholder.com/320x180?text=No+Thumbnail"}
+                        className="nfp-ep-thumbnail"
+                        alt={ep.name}
+                      />
+                      <div className="nfp-ep-thumb-overlay">
+                        <div className="nfp-ep-play-circle">
+                          <Play size={24} fill="white" />
+                        </div>
                       </div>
-                      <div className="nfp-ep-progress-track">
-                        <div className="nfp-ep-progress-fill" style={{ width: `${(ep.progress || 0) * 100}% ` }} />
-                      </div>
+                      <div
+                        className="nfp-ep-progress-bar"
+                        style={{ width: `${(ep.progress || 0) * 100}%` }}
+                      />
                     </div>
 
-                    {isCurrent && (
-                      <div className="nfp-ep-details">
-                        <div className="nfp-ep-thumb">
-                          {ep.still_path ? (
-                            <img src={ep.still_path} alt={ep.name} />
-                          ) : (
-                            <div className="nfp-ep-no-thumb">{ep.episode_number}</div>
-                          )}
-                        </div>
-                        <p className="nfp-ep-overview">{ep.overview}</p>
-                      </div>
-                    )}
+                    <div className="nfp-ep-info-row">
+                      <div className="nfp-ep-title">{ep.episode_number}. {ep.name}</div>
+                    </div>
+
+                    <div className="nfp-ep-meta">{ep.runtime || '45m'}</div>
+                    <div className="nfp-ep-summary">{ep.overview}</div>
                   </div>
                 );
               })}
@@ -875,7 +839,7 @@ function NetflixPlayer({
           </motion.div>
         )}
       </AnimatePresence>
-    </div >
+    </div>
   );
 }
 
