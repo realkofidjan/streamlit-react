@@ -7,7 +7,7 @@ const IMAGE_URL = import.meta.env.VITE_TMDB_IMAGE_URL;
 const getApi = () => {
   const baseUrl = getMediaUrl();
   return axios.create({
-    baseURL: `${baseUrl}/api/tmdb`,
+    baseURL: `${baseUrl}/api/tmdb/`,
   });
 };
 
@@ -17,41 +17,41 @@ export const getImageUrl = (path, size = 'w500') => {
 };
 
 export const searchMovies = (query, page = 1) =>
-  getApi().get('/search/movie', { params: { query, page } });
+  getApi().get('search/movie', { params: { query, page } });
 
 export const searchTvShows = (query, page = 1) =>
-  getApi().get('/search/tv', { params: { query, page } });
+  getApi().get('search/tv', { params: { query, page } });
 
 export const getNowPlayingMovies = (page = 1) =>
-  getApi().get('/movie/now_playing', { params: { page } });
+  getApi().get('movie/now_playing', { params: { page } });
 
 export const getAiringTodayTvShows = (page = 1) =>
-  getApi().get('/tv/airing_today', { params: { page } });
+  getApi().get('tv/airing_today', { params: { page } });
 
 export const getMovieDetails = (movieId) =>
-  getApi().get(`/movie/${movieId}`, { params: { append_to_response: 'credits,videos' } });
+  getApi().get(`movie/${movieId}`, { params: { append_to_response: 'credits,videos' } });
 
 export const getTvShowDetails = (tvId) =>
-  getApi().get(`/tv/${tvId}`, { params: { append_to_response: 'credits,videos,external_ids' } });
+  getApi().get(`tv/${tvId}`, { params: { append_to_response: 'credits,videos,external_ids' } });
 
 export const getTvSeasonDetails = (tvId, seasonNumber) =>
-  getApi().get(`/tv/${tvId}/season/${seasonNumber}`);
+  getApi().get(`tv/${tvId}/season/${seasonNumber}`);
 
 export const getTvEpisodeDetails = (tvId, seasonNumber, episodeNumber) =>
-  getApi().get(`/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}`);
+  getApi().get(`tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}`);
 export const getTvEpisodeExternalIds = (tvId, seasonNumber, episodeNumber) =>
-  getApi().get(`/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}/external_ids`);
+  getApi().get(`tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}/external_ids`);
 export const getTvShowExternalIds = (tvId) =>
-  getApi().get(`/tv/${tvId}/external_ids`);
+  getApi().get(`tv/${tvId}/external_ids`);
 
 export const getSimilarMovies = (movieId) =>
-  getApi().get(`/movie/${movieId}/recommendations`);
+  getApi().get(`movie/${movieId}/recommendations`);
 
 export const getSimilarTvShows = (tvId) =>
-  getApi().get(`/tv/${tvId}/recommendations`);
+  getApi().get(`tv/${tvId}/recommendations`);
 
 export const getRecommendedMovies = (page = 1) =>
-  getApi().get('/discover/movie', {
+  getApi().get('discover/movie', {
     params: {
       page,
       sort_by: 'popularity.desc',
@@ -63,7 +63,7 @@ export const getRecommendedMovies = (page = 1) =>
   });
 
 export const getRecommendedTvShows = (page = 1) =>
-  getApi().get('/discover/tv', {
+  getApi().get('discover/tv', {
     params: {
       page,
       sort_by: 'popularity.desc',
@@ -75,13 +75,13 @@ export const getRecommendedTvShows = (page = 1) =>
   });
 
 export const getTrendingAll = () =>
-  getApi().get('/trending/all/week');
+  getApi().get('trending/all/week');
 
 export const getTrendingDay = () =>
-  getApi().get('/trending/all/day');
+  getApi().get('trending/all/day');
 
 export const getMovieGenres = () =>
-  getApi().get('/genre/movie/list');
+  getApi().get('genre/movie/list');
 
 export const getTvGenres = () =>
-  getApi().get('/genre/tv/list');
+  getApi().get('genre/tv/list');

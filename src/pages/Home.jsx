@@ -102,15 +102,16 @@ function Home() {
 
   const { data: trending = [], isLoading: trendLoading } = useQuery({
     queryKey: ['trending'],
-    queryFn: () => getTrendingDay().then(res => res.data.results || []).catch(() => []),
+    queryFn: () => getTrendingDay().then(res => res.data.results || []).catch(err => { console.error("Trending error:", err); return []; }),
     staleTime: 1000 * 60 * 60, // 1 hour
   });
 
+  const [featuredIndex, setFeaturedIndex] = useState(0);
   const localMovieTmdb = metaData?.movies || [];
   const localTvTmdb = metaData?.tvShows || [];
   const tvBadges = metaData?.tvBadges || {};
 
-  const loading = metaLoading || recMovLoading || recTvLoading || trendLoading;
+  const loading = trendLoading;
 
   const localMovieIds = new Set(localMovieTmdb.map((m) => m.id));
   const localTvIds = new Set(localTvTmdb.map((s) => s.id));
@@ -193,13 +194,12 @@ function Home() {
   ].sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
 
   // Pick random featured items for the billboard and cycle
-  const [featuredIndex, setFeaturedIndex] = useState(0);
   const featuredCandidates = useMemo(() => {
-    // ONLY use trending items as requested
+    if (!trending || !Array.isArray(trending)) return [];
     return trending
-      .filter((t) => t.backdrop_path && (t.media_type === 'movie' || t.media_type === 'tv'))
-      .map((t) => ({ ...t, _type: t.media_type }))
-      .slice(0, 10);
+      .filter((t) => t && t.backdrop_path)
+      .map((t) => ({ ...t, _type: t.media_type || (t.title ? 'movie' : 'tv') }))
+      .slice(0, 15);
   }, [trending]);
 
   useEffect(() => {
@@ -225,18 +225,47 @@ function Home() {
       <HeroBillboard item={featured} type={featured?._type || 'movie'} onMoreInfo={(item, type) => openModal(item, type)} />
 
       <div className="nf-rows-container">
-        {filteredRecMovies.length > 0 && (
-          <NetflixRow title="Popular Movies">
-            {filteredRecMovies.slice(0, 20).map((m) => (
+        {localMovieTmdb.length > 0 && (
+          <NetflixRow title="Your Movies" count={localMovieTmdb.length}>
+            {localMovieTmdb.slice(0, 20).map((m) => (
               <MediaCard key={m.id} item={m} type="movie" onClick={(i) => openModal(i, 'movie')} />
             ))}
           </NetflixRow>
         )}
 
+        {localTvTmdb.length > 0 && (
+          <NetflixRow title="Your TV Shows" count={localTvTmdb.length}>
+            {localTvTmdb.slice(0, 20).map((s) => (
+              <MediaCard key={s.id} item={s} type="tv" badge={tvBadges[s.id]} onClick={(i) => openModal(i, 'tv')} />
+            ))}
+          </NetflixRow>
+        )}
+
+        {trending.length > 0 && (
+          <NetflixRow title="Trending Now">
+            {trending.filter((t) => t.backdrop_path).slice(0, 20).map((t) => (
+              <MediaCard
+                key={`trending-${t.id}`}
+                item={t}
+                type={t.media_type || (t.title ? 'movie' : 'tv')}
+                onClick={(i) => openModal(i, t.media_type || (t.title ? 'movie' : 'tv'))}
+              />
+            ))}
+          </NetflixRow>
+        )}
+
+        {filteredRecMovies.length > 0 && (
+          <NetflixRow title="Recommended Movies">
+            {filteredRecMovies.slice(0, 20).map((m) => (
+              <MediaCard key={`rec-m-${m.id}`} item={m} type="movie" onClick={(i) => openModal(i, 'movie')} />
+            ))}
+          </NetflixRow>
+        )}
+
         {filteredRecTv.length > 0 && (
-          <NetflixRow title="Popular TV Shows">
+          <NetflixRow title="Recommended TV Shows">
             {filteredRecTv.slice(0, 20).map((s) => (
-              <MediaCard key={s.id} item={s} type="tv" onClick={(i) => openModal(i, 'tv')} />
+              <MediaCard key={`rec-s-${s.id}`} item={s} type="tv" onClick={(i) => openModal(i, 'tv')} />
             ))}
           </NetflixRow>
         )}

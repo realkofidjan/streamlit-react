@@ -102,7 +102,7 @@ function App() {
         persistOptions={{
           persister: localStoragePersister,
           maxAge: 1000 * 60 * 60 * 24, // 24 hours
-          buster: 'v1.0.3'
+          buster: 'v1.0.4'
         }}
       >
         <UserProvider>

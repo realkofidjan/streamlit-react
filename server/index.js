@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -991,7 +992,6 @@ app.get('/api/intro', async (req, res) => {
 });
 
 // ========== TMDB Server-Side Cache ==========
-const axios = require('axios');
 const TMDB_CACHE_FILE = path.join(DATA_DIR, 'tmdb_cache.json');
 let tmdbCache = {};
 
@@ -1089,69 +1089,69 @@ app.get('/api/library/metadata', async (req, res) => {
 
     // Deduplicate TV shows by name
     const uniqueTv = [];
-    const seenTv = new Set();
+    const seenTvNames = new Set();
     for (const s of tvShows) {
-      if (!seenTv.has(s.name)) {
-        seenTv.add(s.name);
+      if (!seenTvNames.has(s.name)) {
+        seenTvNames.add(s.name);
         uniqueTv.push(s);
       }
     }
 
-    // Match Movies
-    const movieResults = [];
-    for (const m of movies) {
+    // Match Movies in parallel
+    const moviePromises = movies.map(async (m) => {
       const year = extractYear(m.name);
       try {
         const searchRes = await fetchTmdbCache('search/movie', { query: cleanName(m.name) }, api_key);
         const best = pickBestResult(searchRes.results, year, 'release_date');
-        if (best) movieResults.push({ ...best, localFilename: m.filename });
-      } catch (e) { /* skip */ }
-    }
-
-    // Deduplicate matched movies
-    const seenMovies = new Set();
-    const finalMovies = movieResults.filter(m => {
-      if (seenMovies.has(m.id)) return false;
-      seenMovies.add(m.id);
-      return true;
+        return best ? { ...best, localFilename: m.filename } : null;
+      } catch (e) { return null; }
     });
 
-    // Match TV Shows
-    const tvResults = [];
-    for (const s of uniqueTv) {
+    // Match TV Shows in parallel
+    const tvPromises = uniqueTv.map(async (s) => {
       const year = extractYear(s.name);
       try {
         const searchRes = await fetchTmdbCache('search/tv', { query: cleanName(s.name) }, api_key);
         const best = pickBestResult(searchRes.results, year, 'first_air_date');
-        if (best) tvResults.push({ ...best, localName: s.name });
-      } catch (e) { /* skip */ }
-    }
-
-    // Deduplicate matched TV Shows by TMDB ID
-    const seenTvIds = new Set();
-    const finalTvShows = tvResults.filter(show => {
-      if (seenTvIds.has(show.id)) return false;
-      seenTvIds.add(show.id);
-      return true;
+        return best ? { ...best, localName: s.name } : null;
+      } catch (e) { return null; }
     });
 
-    // Compute Badges
+    const [movieResults, tvResultsRaw] = await Promise.all([
+      Promise.all(moviePromises),
+      Promise.all(tvPromises)
+    ]);
+
+    // Deduplicate matched movies
+    const seenMovies = new Set();
+    const finalMovies = movieResults.filter(m => m && !seenMovies.has(m.id) && seenMovies.add(m.id));
+
+    // Deduplicate matched TV Shows
+    const seenTvIds = new Set();
+    const finalTvShows = tvResultsRaw.filter(s => s && !seenTvIds.has(s.id) && seenTvIds.add(s.id));
+
+    // Fetch Badges in Parallel
     const today = new Date().toISOString().split('T')[0];
-    const badges = {};
-    for (const show of finalTvShows) {
+    const badgePromises = finalTvShows.map(async (show) => {
       try {
         const details = await fetchTmdbCache(`tv/${show.id}`, {}, api_key);
         const nextEp = details.next_episode_to_air;
         const lastEp = details.last_episode_to_air;
+        let badge = null;
         if (nextEp && nextEp.air_date > today) {
-          badges[show.id] = { type: 'coming-soon', date: nextEp.air_date };
+          badge = { type: 'coming-soon', date: nextEp.air_date };
         } else if (details.status === 'Returning Series' && lastEp && lastEp.air_date) {
           const daysSinceLast = (Date.now() - new Date(lastEp.air_date).getTime()) / (1000 * 60 * 60 * 24);
-          if (daysSinceLast < 14) badges[show.id] = { type: 'new-episodes' };
+          if (daysSinceLast < 14) badge = { type: 'new-episodes' };
         }
-        if (nextEp && nextEp.air_date <= today) badges[show.id] = { type: 'new-episodes' };
-      } catch (e) { /* skip */ }
-    }
+        if (nextEp && nextEp.air_date <= today) badge = { type: 'new-episodes' };
+        return badge ? { id: show.id, badge } : null;
+      } catch (e) { return null; }
+    });
+
+    const badgesResults = await Promise.all(badgePromises);
+    const badges = {};
+    badgesResults.forEach(r => { if (r) badges[r.id] = r.badge; });
 
     res.json({ movies: finalMovies, tvShows: finalTvShows, tvBadges: badges });
   } catch (err) {
