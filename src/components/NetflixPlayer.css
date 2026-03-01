@@ -591,8 +591,8 @@ video::-webkit-media-text-track-display {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding-left: 10%;
-  background: rgba(0, 0, 0, 0.75);
+  padding: 0 10%;
+  background: radial-gradient(circle at 25% 50%, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.9) 100%);
   z-index: 2000;
   cursor: pointer;
   pointer-events: auto;
@@ -600,65 +600,100 @@ video::-webkit-media-text-track-display {
 }
 
 .nfp-paused-info {
-  max-width: 600px;
+  max-width: 650px;
   color: white;
+  animation: fadeInPause 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .nfp-paused-label {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.15rem;
+  color: rgba(255, 255, 255, 0.7);
   display: block;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+  font-weight: 500;
 }
 
 .nfp-paused-show {
-  font-size: 3rem;
-  font-weight: 700;
+  font-size: 4.5rem;
+  font-weight: 900;
   margin: 0;
+  line-height: 1.1;
+  letter-spacing: -2px;
 }
 
 .nfp-paused-season {
   display: block;
-  font-size: 1.1rem;
-  font-weight: 500;
-  margin-top: 2px;
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin-top: 8px;
+  color: #fff;
 }
 
 .nfp-paused-ep {
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin: 20px 0 8px 0;
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 25px 0 10px 0;
+  color: #fff;
+  line-height: 1.2;
 }
 
 .nfp-paused-desc {
-  font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.7);
-  line-height: 1.4;
-  margin: 0;
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+  margin: 15px 0 0 0;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  max-width: 90%;
 }
 
 .nfp-paused-tag {
   position: absolute;
-  bottom: 60px;
-  right: 60px;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.9rem;
-  font-weight: 400;
+  bottom: 80px;
+  right: 10%;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+@keyframes fadeInPause {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ===== MOBILE RESPONSIVENESS ===== */
 @media (max-width: 1024px) {
+  .nfp-paused-show {
+    font-size: 3rem;
+  }
+
+  .nfp-paused-season {
+    font-size: 1.3rem;
+  }
+
+  .nfp-paused-ep {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
   .nfp-top-bar {
     padding: 20px;
   }
 
   .nfp-top-title {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     max-width: 200px;
   }
 
@@ -699,25 +734,42 @@ video::-webkit-media-text-track-display {
   }
 
   .nfp-paused-overlay {
-    padding-left: 10%;
-    justify-content: flex-start;
-    text-align: left;
+    padding: 0 6%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .nfp-paused-info {
+    max-width: 100%;
+    align-items: center;
   }
 
   .nfp-paused-show {
-    font-size: 2.2rem;
+    font-size: 2.5rem;
+  }
+
+  .nfp-paused-ep {
+    font-size: 1.3rem;
+    margin: 15px 0 5px 0;
+  }
+
+  .nfp-paused-season {
+    font-size: 1.1rem;
   }
 
   .nfp-paused-desc {
-    font-size: 0.95rem;
-    max-width: 80%;
-    margin: 10px 0;
+    font-size: 1rem;
+    max-width: 100%;
+    margin: 15px 0;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
   }
 
   .nfp-paused-tag {
     bottom: 40px;
-    right: 40px;
-    font-size: 0.85rem;
+    right: 50%;
+    transform: translateX(50%);
+    font-size: 1.1rem;
   }
 
   /* Handle Portrait specific issues */
@@ -727,7 +779,7 @@ video::-webkit-media-text-track-display {
     }
 
     .nfp-top-title {
-      font-size: 1rem;
+      font-size: 0.95rem;
       max-width: 150px;
     }
 

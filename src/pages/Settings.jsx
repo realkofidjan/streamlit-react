@@ -31,6 +31,7 @@ function Settings() {
   const isFiifi = currentUser?.username?.toLowerCase() === 'fiifi';
   const [moviesDirs, setMoviesDirs] = useState(['']);
   const [tvDirs, setTvDirs] = useState(['']);
+  const [subsDirs, setSubsDirs] = useState(['']);
   const [pathStatus, setPathStatus] = useState(null);
   const [pathSaved, setPathSaved] = useState(false);
 
@@ -83,6 +84,7 @@ function Settings() {
           const data = await res.json();
           setMoviesDirs(data.moviesDirs.map((d) => d.path));
           setTvDirs(data.tvDirs.map((d) => d.path));
+          setSubsDirs(data.subsDirs && data.subsDirs.length > 0 ? data.subsDirs.map((d) => d.path) : ['']);
           setPathStatus(data);
         }
       } catch { }
@@ -111,7 +113,7 @@ function Settings() {
     try {
       const res = await fetch(`${getMediaUrl()}/api/config/media-paths`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ moviesDirs, tvDirs, userId: currentUser.id }),
+        body: JSON.stringify({ moviesDirs, tvDirs, subsDirs, userId: currentUser.id }),
       });
       if (res.ok) { setPathStatus(await res.json()); setPathSaved(true); setTimeout(() => setPathSaved(false), 2000); }
     } catch { }
@@ -367,8 +369,22 @@ function Settings() {
                   </div>
                 ))}
                 <button className="nf-add-folder" onClick={() => addDir(tvDirs, setTvDirs)}><FaPlus /> Add folder</button>
+
+                <label className="nf-field-label" style={{ marginTop: '1.5rem' }}><FaFolder /> Subtitle Search Paths</label>
+                <p className="nf-card-desc" style={{ fontSize: '0.85rem', marginBottom: '10px' }}>
+                  If your subtitles are on a separate drive, the server will look for them in these folders mirroring the media file structure.
+                </p>
+                {subsDirs.map((dir, i) => (
+                  <div key={i} className="nf-path-row">
+                    <input type="text" className="nf-field-input" value={dir} onChange={(e) => updateDir(subsDirs, setSubsDirs, i, e.target.value)} placeholder="/Volumes/MyDrive/Subtitles" />
+                    {(() => { const s = getPathExists(pathStatus?.subsDirs, i); if (!s) return null; return <span className={`nf-path-dot ${s.exists ? 'ok' : 'err'}`}>{s.exists ? <FaCheck /> : <FaTimes />}</span>; })()}
+                    {subsDirs.length > 1 && <button className="nf-icon-sm" onClick={() => removeDir(subsDirs, setSubsDirs, i)}><FaTrash /></button>}
+                  </div>
+                ))}
+                <button className="nf-add-folder" onClick={() => addDir(subsDirs, setSubsDirs)}><FaPlus /> Add folder</button>
+
                 <br />
-                <button className="nf-btn-blue" onClick={handleSavePaths}>{pathSaved ? <><FaCheck /> Saved</> : 'Save Paths'}</button>
+                <button className="nf-btn-blue" style={{ marginTop: '2rem' }} onClick={handleSavePaths}>{pathSaved ? <><FaCheck /> Saved</> : 'Save Paths'}</button>
               </div>
             ) : (
               <div className="nf-account-card">

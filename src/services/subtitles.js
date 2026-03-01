@@ -11,7 +11,7 @@ import { getMediaUrl } from './media';
  * @param {string} [languages='en'] - Language code(s)
  * @returns {Promise<Array>} Array of subtitle results
  */
-export async function searchSubtitles(tmdbId, type = 'movie', season, episode, languages = 'en', filename, query) {
+export async function searchSubtitles(tmdbId, type = 'movie', season, episode, languages = 'en', filename, query, showName, seasonName) {
     try {
         const params = { type, languages };
         if (tmdbId) params.tmdb_id = tmdbId;
@@ -20,6 +20,8 @@ export async function searchSubtitles(tmdbId, type = 'movie', season, episode, l
         if (type === 'episode' && season && episode) {
             params.season = season;
             params.episode = episode;
+            if (showName) params.show_name = showName;
+            if (seasonName) params.season_name = seasonName;
         }
         if (filename) params.filename = filename;
         const res = await axios.get(`${getMediaUrl()}/api/subtitles/search`, { params });

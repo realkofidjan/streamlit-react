@@ -140,7 +140,9 @@ function Player() {
         });
 
         // Trigger Subtitle search
-        loadSubtitles(tmdbId, 'movie', null, null, movie.title);
+        if (!hasDirectUrl) {
+            loadSubtitles(tmdbId, 'movie', null, null, movie.title);
+        }
 
         if (hasDirectUrl) return; // Skip heavy local mapping
 
@@ -152,6 +154,8 @@ function Player() {
             foundFilename = file.filename;
             setLocalFilename(file.filename);
             setStreamUrl(getLocalMovieStreamUrl(file.filename));
+            // Trigger Subtitle search with local filename
+            loadSubtitles(tmdbId, 'movie', null, null, movie.title, file.filename);
         } else {
             setError('Movie not found on local server');
         }
@@ -188,8 +192,10 @@ function Player() {
             showId: tmdbId,
         });
 
-        // Trigger Subtitle search
-        loadSubtitles(tmdbId, 'episode', seasonNum, episodeNum, show.name);
+        // Trigger Subtitle search (preliminary)
+        if (!hasDirectUrl) {
+            loadSubtitles(tmdbId, 'episode', seasonNum, episodeNum, show.name);
+        }
 
         // Find local files and build episode data
         const localRes = await searchLocalTvShows(show.name);
@@ -199,6 +205,7 @@ function Player() {
         }
 
         let foundUrl = null;
+        let foundFilename = null;
         let matchedShowName = '';
         let matchedSeasonFolder = '';
         const localEps = new Set();
@@ -217,6 +224,7 @@ function Player() {
 
                         if (parseInt(em[1]) === episodeNum) {
                             foundUrl = getLocalTvStreamUrl(match.name, folder.name, localEp.filename);
+                            foundFilename = localEp.filename;
                             setLocalFilename(localEp.filename);
                             matchedShowName = match.name;
                             matchedSeasonFolder = folder.name;
@@ -230,6 +238,9 @@ function Player() {
         setLocalShowName(matchedShowName);
         setLocalSeasonFolder(matchedSeasonFolder);
         setLocalEpisodeSet(localEps);
+
+        // Re-trigger subtitle search with local information
+        loadSubtitles(tmdbId, 'episode', seasonNum, episodeNum, show.name, foundFilename, matchedShowName, matchedSeasonFolder);
 
 
 
@@ -353,9 +364,9 @@ function Player() {
         navigate(`/play?type=episode&id=${tmdbId}&season=${nextEpisodeInfo.season}&episode=${nextEpisodeInfo.episode}`, { replace: true });
     };
 
-    const loadSubtitles = async (id, mType, s, e, title) => {
+    const loadSubtitles = async (id, mType, s, e, title, filename, showN, seasonN) => {
         try {
-            const results = await searchSubtitles(id, mType, s, e, 'en', null, title);
+            const results = await searchSubtitles(id, mType, s, e, 'en', filename, title, showN, seasonN);
             setSubtitles(results);
             // Auto-load the first English result if score is decent
             if (results.length > 0) {

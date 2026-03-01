@@ -16,6 +16,7 @@ const NOTIFICATIONS_FILE = path.join(DATA_DIR, 'notifications.json');
 
 const DEFAULT_MOVIES_DIRS = ['/Volumes/Lexar-NK&D/Movies'];
 const DEFAULT_TV_DIRS = ['/Volumes/Lexar-NK&D/Tv Shows'];
+const DEFAULT_SUBS_DIRS = [];
 
 function loadConfig() {
   try {
@@ -24,10 +25,11 @@ function loadConfig() {
       // Migrate old single-string format to arrays
       const moviesDirs = raw.moviesDirs || (raw.moviesDir ? [raw.moviesDir] : DEFAULT_MOVIES_DIRS);
       const tvDirs = raw.tvDirs || (raw.tvDir ? [raw.tvDir] : DEFAULT_TV_DIRS);
-      return { moviesDirs, tvDirs };
+      const subsDirs = raw.subsDirs || DEFAULT_SUBS_DIRS;
+      return { moviesDirs, tvDirs, subsDirs };
     }
   } catch { /* use defaults */ }
-  return { moviesDirs: [...DEFAULT_MOVIES_DIRS], tvDirs: [...DEFAULT_TV_DIRS] };
+  return { moviesDirs: [...DEFAULT_MOVIES_DIRS], tvDirs: [...DEFAULT_TV_DIRS], subsDirs: [...DEFAULT_SUBS_DIRS] };
 }
 
 function saveConfig(config) {
@@ -37,6 +39,7 @@ function saveConfig(config) {
 let config = loadConfig();
 let MOVIES_DIRS = config.moviesDirs;
 let TV_DIRS = config.tvDirs;
+let SUBS_DIRS = config.subsDirs;
 
 const INITIAL_CHUNK = 1024 * 1024; // 1MB
 const BUFFER_CHUNK = 10 * 1024 * 1024; // 10MB
@@ -70,6 +73,7 @@ const MIME_TYPES = {
   '.m4v': 'video/mp4',
 };
 const VIDEO_EXTS = Object.keys(MIME_TYPES);
+const SUB_EXTS = ['.srt', '.vtt'];
 
 function listVideoFiles(dir) {
   if (!fs.existsSync(dir)) return [];
@@ -426,11 +430,12 @@ app.get('/api/config/media-paths', (req, res) => {
   res.json({
     moviesDirs: MOVIES_DIRS.map((d) => ({ path: d, exists: fs.existsSync(d) })),
     tvDirs: TV_DIRS.map((d) => ({ path: d, exists: fs.existsSync(d) })),
+    subsDirs: SUBS_DIRS.map((d) => ({ path: d, exists: fs.existsSync(d) })),
   });
 });
 
 app.put('/api/config/media-paths', (req, res) => {
-  const { moviesDirs, tvDirs, userId } = req.body;
+  const { moviesDirs, tvDirs, subsDirs, userId } = req.body;
   // Only Fiifi can change paths
   const users = readUsers();
   const user = users.find((u) => u.id === userId);
@@ -443,12 +448,16 @@ app.put('/api/config/media-paths', (req, res) => {
   // Filter out empty strings
   MOVIES_DIRS = moviesDirs.filter((d) => d.trim());
   TV_DIRS = tvDirs.filter((d) => d.trim());
-  config = { moviesDirs: MOVIES_DIRS, tvDirs: TV_DIRS };
+  if (subsDirs && Array.isArray(subsDirs)) {
+    SUBS_DIRS = subsDirs.filter(d => d.trim());
+  }
+  config = { moviesDirs: MOVIES_DIRS, tvDirs: TV_DIRS, subsDirs: SUBS_DIRS };
   saveConfig(config);
 
   res.json({
     moviesDirs: MOVIES_DIRS.map((d) => ({ path: d, exists: fs.existsSync(d) })),
     tvDirs: TV_DIRS.map((d) => ({ path: d, exists: fs.existsSync(d) })),
+    subsDirs: SUBS_DIRS.map((d) => ({ path: d, exists: fs.existsSync(d) })),
   });
 });
 
@@ -675,6 +684,69 @@ app.get('/api/download/status', (req, res) => {
   });
 });
 
+// ========== LOCAL SUBTITE HELPER ==========
+function findLocalSubtitlesForVideo(videoPath) {
+  if (!videoPath) return [];
+  const dir = path.dirname(videoPath);
+  const videoBase = path.basename(videoPath, path.extname(videoPath));
+  const results = [];
+
+  const scanDir = (targetDir) => {
+    if (!fs.existsSync(targetDir)) return;
+    const files = fs.readdirSync(targetDir);
+    for (const f of files) {
+      if (f.startsWith('.')) continue;
+      const ext = path.extname(f).toLowerCase();
+      if (SUB_EXTS.includes(ext)) {
+        // If it's in a subfolder, we take anything that looks like a sub
+        // If it's in the same folder, check if name matches video name
+        const isMatch = f.toLowerCase().includes(videoBase.toLowerCase());
+        if (isMatch || targetDir !== dir) {
+          results.push({
+            id: `local:${Buffer.from(path.join(targetDir, f)).toString('base64')}`,
+            attributes: {
+              release: f,
+              language: f.toLowerCase().includes('.en.') || f.toLowerCase().includes('english') ? 'en' : 'unknown',
+              files: [{ file_id: `local:${Buffer.from(path.join(targetDir, f)).toString('base64')}` }]
+            },
+            type: 'local'
+          });
+        }
+      }
+    }
+  };
+
+  // 1. Check same dir and its "Subs" subfolders
+  scanDir(dir);
+  scanDir(path.join(dir, 'Subs'));
+  scanDir(path.join(dir, 'Subtitles'));
+  scanDir(path.join(dir, 'subs'));
+  scanDir(path.join(dir, 'subtitles'));
+
+  // 2. Check Parallel Subtitle Dirs
+  // Determine relative path of video within its respective root
+  let relativePath = null;
+  for (const root of [...MOVIES_DIRS, ...TV_DIRS]) {
+    if (videoPath.startsWith(root)) {
+      relativePath = path.dirname(videoPath.substring(root.length));
+      if (relativePath.startsWith('/')) relativePath = relativePath.substring(1);
+      break;
+    }
+  }
+
+  if (relativePath !== null) {
+    for (const subRoot of SUBS_DIRS) {
+      const parallelDir = path.join(subRoot, relativePath);
+      scanDir(parallelDir);
+      // Also check subfolders in the parallel mirror
+      scanDir(path.join(parallelDir, 'Subs'));
+      scanDir(path.join(parallelDir, 'Subtitles'));
+    }
+  }
+
+  return results;
+}
+
 // ========== SUBTITLES (OpenSubtitles API proxy) ==========
 
 const OPENSUBTITLES_API_KEY = process.env.OPENSUBTITLES_API_KEY || '';
@@ -683,10 +755,31 @@ const SUBTITLES_CACHE_DIR = path.join(DATA_DIR, 'subtitles_cache');
 if (!fs.existsSync(SUBTITLES_CACHE_DIR)) fs.mkdirSync(SUBTITLES_CACHE_DIR, { recursive: true });
 
 app.get('/api/subtitles/search', async (req, res) => {
-  if (!OPENSUBTITLES_API_KEY) return res.status(503).json({ error: 'OPENSUBTITLES_API_KEY not configured' });
-  const { tmdb_id, type, season, episode, languages, filename, query } = req.query;
-  // Require either tmdb_id OR query
-  if (!tmdb_id && !query) return res.status(400).json({ error: 'tmdb_id or query required' });
+  const { tmdb_id, type, season, episode, languages, filename, query, show_name, season_name } = req.query;
+
+  let localResults = [];
+  try {
+    // Attempt local discovery
+    let videoPath = null;
+    if (type === 'movie' && filename) {
+      videoPath = findMovieFile(filename);
+    } else if (type === 'episode' && show_name && season_name && filename) {
+      const showDir = findTvShowDir(show_name);
+      if (showDir) videoPath = path.join(showDir, season_name, filename);
+    }
+    if (videoPath) {
+      localResults = findLocalSubtitlesForVideo(videoPath);
+    }
+  } catch (err) {
+    console.warn('[Subtitle Search] Local discovery failed:', err.message);
+  }
+
+  if (!OPENSUBTITLES_API_KEY) {
+    return res.json({ data: localResults });
+  }
+
+  // Require either tmdb_id OR query for OpenSubtitles
+  if (!tmdb_id && !query) return res.json({ data: localResults });
 
   try {
     console.log(`[API] Subtitle Search: TMDB=${tmdb_id}, Query=${query}, Type=${type}, S=${season} E=${episode}, Lang=${languages}, File=${filename}`);
@@ -738,7 +831,9 @@ app.get('/api/subtitles/search', async (req, res) => {
       }
 
       // Limit English results
-      data.data = [...en.slice(0, 15), ...others];
+      data.data = [...localResults, ...en.slice(0, 15), ...others];
+    } else {
+      data.data = localResults;
     }
 
     res.json(data);
@@ -760,6 +855,29 @@ function srtToVtt(srt) {
 app.get('/api/subtitles/download', async (req, res) => {
   const { file_id } = req.query;
   if (!file_id) return res.status(400).json({ error: 'file_id required' });
+
+  // Handle Local Subtitles
+  if (file_id.startsWith('local:')) {
+    try {
+      const filePath = Buffer.from(file_id.replace('local:', ''), 'base64').toString('utf-8');
+      if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Local subtitle file not found' });
+
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const ext = path.extname(filePath).toLowerCase();
+
+      let vtt = content;
+      if (ext === '.srt') {
+        vtt = srtToVtt(content);
+      }
+
+      res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      return res.send(vtt);
+    } catch (err) {
+      console.error('Local subtitle serving error:', err.message);
+      return res.status(500).json({ error: 'Failed to serve local subtitle' });
+    }
+  }
 
   const cachePath = path.join(SUBTITLES_CACHE_DIR, `${file_id}.vtt`);
 
