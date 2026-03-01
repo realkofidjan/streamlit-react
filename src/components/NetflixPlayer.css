@@ -591,8 +591,8 @@ video::-webkit-media-text-track-display {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding-left: 15%;
-  background: rgba(0, 0, 0, 0.7);
+  padding-left: 10%;
+  background: rgba(0, 0, 0, 0.75);
   z-index: 2000;
   cursor: pointer;
   pointer-events: auto;
@@ -652,7 +652,7 @@ video::-webkit-media-text-track-display {
 }
 
 /* ===== MOBILE RESPONSIVENESS ===== */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .nfp-top-bar {
     padding: 20px;
   }
@@ -699,7 +699,7 @@ video::-webkit-media-text-track-display {
   }
 
   .nfp-paused-overlay {
-    padding-left: 8%;
+    padding-left: 10%;
     justify-content: flex-start;
     text-align: left;
   }
@@ -709,15 +709,15 @@ video::-webkit-media-text-track-display {
   }
 
   .nfp-paused-desc {
-    font-size: 0.9rem;
-    max-width: 85%;
+    font-size: 0.95rem;
+    max-width: 80%;
     margin: 10px 0;
   }
 
   .nfp-paused-tag {
-    bottom: 30px;
-    right: 30px;
-    font-size: 0.8rem;
+    bottom: 40px;
+    right: 40px;
+    font-size: 0.85rem;
   }
 
   /* Handle Portrait specific issues */
